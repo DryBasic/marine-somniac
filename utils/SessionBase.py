@@ -27,7 +27,17 @@ class SessionBase:
         return os.listdir('filestore')
     
     @staticmethod
+    def get_file_from_analysis(analysis, file) -> str | None:
+        parent_path = SessionBase.get_analysis_path(analysis)
+        if file in os.listdir(parent_path):
+            return f"{parent_path}/{file}"
+        return None
+    
+    @staticmethod
     def get_edf_from_analysis(analysis: str, path=False) -> str | None:
+        """
+        Search for and retrieve filepath of the EDF file for a given analysis.
+        """
         if analysis in SessionBase.get_existing_analyses():
             for file in os.listdir(f'{cfg.ANALYSIS_STORE}/{analysis}'):
                 ext = file.split('.')[-1].lower()
@@ -39,6 +49,9 @@ class SessionBase:
 
     @staticmethod
     def initialize_session() -> None:
+        """
+        Initializes session_state variables. Creates analysis store directory.
+        """
         SESSION_VARS = (
             'analysis',
             'edf_path',
@@ -54,7 +67,18 @@ class SessionBase:
             os.mkdir(cfg.ANALYSIS_STORE)
 
     @staticmethod
+    def read_json(path) -> dict:
+        with open(path) as f:
+            json_dict = json.load(f)
+        return json_dict
+
+    @staticmethod
     def write_edf(file: UploadedFile, parent_dir):
+        """
+        Take the EDF file in the form streamlit's UploadedFile object (return type of
+        st.file_uploader), read it into bytes, then write to disk under the configurable
+        `ANALYSIS_STORE`/`ANALYSIS` path.
+        """
         session_dir = f'{cfg.ANALYSIS_STORE}/{parent_dir}'
         if parent_dir not in os.listdir(cfg.ANALYSIS_STORE):
             os.mkdir(session_dir)
@@ -70,7 +94,10 @@ class SessionBase:
 
     @staticmethod
     def write_configuration(config: dict, analysis, name):
+        """
+        Write a dictionary to a json file under the specfied analysis directory.
+        """
         path = f"{SessionBase.get_analysis_path(analysis)}/{name}"
         with open(path, "w") as f:
-            json.dump(config, f, default=str)
+            json.dump(config, f, default=str, indent=4)
             

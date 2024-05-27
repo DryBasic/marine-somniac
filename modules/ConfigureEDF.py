@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
-import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, datetime
 import modules.instructions as instruct
 from utils.SessionBase import SessionBase
 from utils.EDF import EDFutils
@@ -25,6 +24,7 @@ class ConfigureEDF(SessionBase):
         self.edfpath = self.get_edf_from_analysis(analysis, path=True)
         self.channel_map = None
         self.time_range = None
+        self.date_str_format = '%Y-%m-%d %H:%M:%S.%f'
 
     def upload_file(self: UploadedFile) -> None:
         file = st.file_uploader('Drop your EDF file here')
@@ -46,15 +46,75 @@ class ConfigureEDF(SessionBase):
     def initialize_edf_properties(self) -> None:
         with st.spinner(f'Reading metadata from EDF, please wait...'):
             self.edf = load_edf_details(self.edfpath)
+        
+    def channel_mapping(self) -> None:
+        """
+        Generate widgets for collecting EDF configuration. Prompts user to
+        specify which channels will be analyzed, and to specify the type of
+        each channel.
+        """
+        # TODO: read in existing config
+
+        defaults = self.retrieve_defaults('channel_mapping')
+        if defaults is None:
+            ch_default = None
+            ch_type_map = {}
+        else:
+            ch_default = defaults['channels']
+            ch_type_map = defaults['type_map']
+
+        picked_channels = st.multiselect(
+            'What channels will you be using?',
+            options=self.edf['channels'],
+            default=ch_default
+        )
+        channel_map = pd.DataFrame(
+            picked_channels,
+            columns=["ch_name"]
+        )
+        channel_map["ch_type"] = [ch_type_map.get(ch) for ch in picked_channels]
+        channel_map["ch_freq"] = [self.edf['freqs'][ch] for ch in picked_channels]
+
+        self.channel_map = st.data_editor(
+            channel_map,
+            column_config={
+                "ch_name": st.column_config.TextColumn(
+                    "Channel Name",
+                    disabled=True
+                ),
+                "ch_type": st.column_config.SelectboxColumn(
+                    "Channel Type",
+                    help=instruct.CHANNEL_TYPE_HELP,
+                    options=[None, "EEG", "ECG", "Motion", "Other"],
+                    required=True
+                ),
+                "ch_freq": st.column_config.NumberColumn(
+                    "Channel Frequency",
+                    disabled=True
+                )
+            },
+            use_container_width=True,
+            hide_index=True
+        )
+        if not all(self.channel_map.ch_type):
+            st.error("Ensure all channel types are specified")
 
     def set_time_range(self) -> None:
-        with st.expander("Set time range", True):
-            start = self.edf['start_ts']
-            end = self.edf['end_ts']
+        edf_start = self.edf['start_ts']
+        edf_end = self.edf['end_ts']
 
+        defaults = self.retrieve_defaults('set_time_range')
+        if defaults is None:
+            start = edf_start
+            end = edf_end
+        else:
+            start = defaults['start']
+            end = defaults['end']
+
+        with st.expander("Set time range", True):
             c = st.columns([6, 1, 6])
-            c[0].markdown(f"EDF Start Timestamp: `{start}`")
-            c[2].write(f"EDF End Timestamp: `{end}`")
+            c[0].markdown(f"EDF Start Timestamp: `{edf_start}`")
+            c[2].write(f"EDF End Timestamp: `{edf_end}`")
 
             c = st.columns([2, 2, 2, 1, 2, 2, 2])
             start_date = c[0].date_input("Start Date",
@@ -83,115 +143,86 @@ class ConfigureEDF(SessionBase):
         user_start += timedelta(seconds=start_secs) 
         user_end = datetime.combine(end_date, end_time)
         user_end += timedelta(seconds=end_secs)
-
         self.time_range = (user_start, user_end)
-        
-    def channel_mapping(self) -> None:
-        # TODO: read in existing config
+        return None
 
-        ch_default = None 
-        picked_channels = st.multiselect(
-            'What channels will you be using?',
-            options=self.edf['channels'],
-            default=ch_default
-        )
-        channel_map = pd.DataFrame(
-            picked_channels,
-            columns=["ch_name"]
-        )
-        channel_map["ch_type"] = [None for _ in picked_channels]
-        channel_map["ch_freq"] = [self.edf['freqs'][ch] for ch in picked_channels]
-
-        self.channel_map = st.data_editor(
-            channel_map,
-            column_config={
-                "ch_name": st.column_config.TextColumn(
-                    "Channel Name",
-                    disabled=True
-                ),
-                "ch_type": st.column_config.SelectboxColumn(
-                    "Channel Type",
-                    help=instruct.CHANNEL_TYPE_HELP,
-                    options=[None, "EEG", "ECG", "Motion", "Other"],
-                    required=True
-                ),
-                "ch_freq": st.column_config.NumberColumn(
-                    "Channel Frequency",
-                    disabled=True
-                )
-            },
-            use_container_width=True,
-            hide_index=True
-        )
-        if not all(self.channel_map.ch_type):
-            st.error("Ensure all channel types are specified")
-
-    # TODO
-    def retrieve_configuration(self, filetype) -> None|pd.DataFrame|dict:
+    def retrieve_defaults(self, for_: str) -> None|dict:
         """
-        Check if config files exist in the analysis directory and return them.
-        Used for loading previous values in config editors.
+        Check if config file exists in the analysis directory,
+        reads the json and returns it.
         """
-        config_exists = False
-        if config_exists:
-            match filetype:
-                case "EDFconfig.json":
-                    path = ''
-                    with open(path) as f:
-                        edfconfig = json.load(f)
-                    return edfconfig
-                case "channel_map.csv":
-                    path = ''
-                    channel_map = pd.read_csv(path)
-                    return channel_map
+        config_json = self.get_file_from_analysis(self.analysis, 'EDFconfig.json')
+        if config_json is not None:
+            config = self.read_json(config_json)
+            defaults = {}
+            match for_:
+                case 'channel_mapping':
+                    defaults['channels'] = config['channels']['picked']
+                    type_map = {}
+                    for ch_type, chs in config['channels']['map'].items():
+                        for ch in chs:
+                            type_map[ch] = ch_type
+                    defaults['type_map'] = type_map
+                
+                case 'set_time_range':
+                    defaults['start'] = datetime.strptime(
+                        config['time']['start'], self.date_str_format)
+                    defaults['end'] = datetime.strptime(
+                        config['time']['end'], self.date_str_format)
+
+            return defaults
+
         else:
             return None
 
     def construct_configuration(self) -> dict:
+        """
+        Creates a config dict based on the configurations provided via the user's
+        widget selections. Stores EDF channel selection, channel type/freq mappings,
+        and the time range subset of the analysis.
+        """
         config = {
             'time': {
-                'start': self.time_range[0],
-                'end': self.time_range[1],
+                'start': datetime.strftime(self.time_range[0], self.date_str_format),
+                'end': datetime.strftime(self.time_range[1], self.date_str_format), 
                 'tz': None
             },
             'channels': {
+                'picked': [],
                 'map': {
                     'EEG': [],
                     'ECG': [],
-                    'misc': [],
+                    'Motion': [],
+                    'Other': [],
                     'ignore': []
                 },
                 'freq': {}
             }
         }
+        channel_map = config['channels']['map']
+        channel_freqs = config['channels']['freq']
         for _, row in self.channel_map.iterrows():
-            label_to_group = {
-                'EEG': 'EEG',
-                'ECG': 'ECG',
-                'Motion': 'misc',
-                'Other': 'misc'
-            }
-            if row['ch_type'] in label_to_group:
-                group = label_to_group[row['ch_type']]
-            else:
-                group = 'ignore'
-            config['channels']['map'][group].append(row['ch_name'])
-            if row['ch_freq'] not in config['channels']['freq']:
-                config['channels']['freq'][row['ch_freq']] = []
-            config['channels']['freq'][row['ch_freq']].append(row['ch_name'])
+            ch_type = row['ch_type']
+            ch_name = row['ch_name']
+            ch_freq = row['ch_freq']
+
+            config['channels']['picked'].append(ch_name)
+            channel_map[ch_type].append(ch_name)
+            if ch_freq not in channel_freqs:
+                channel_freqs[ch_freq] = []
+            channel_freqs[ch_freq].append(ch_name)
+
+        for ch in self.edf['channels']:
+            if ch not in config['channels']['picked']:
+                config['channels']['map']['ignore'].append(ch)
+        
         return config
-    
-    @staticmethod
-    def validate_file(file) -> tuple:
-        if file is None:
-            return (False, "No file detected (may take a moment even when loading bar is full)")
-        ext = file.name.split('.')[-1].lower()
-        if not ext == 'edf':
-            return (False, f'Only accepts .edf file extension, not "{ext}"')
-        else:
-            return (True, "Valid file")
 
     def validate_configuration(self) -> tuple:
+        """
+        Logical checks on user-specified configurations used to constraint
+        the ability to write the config file.
+        """
         if self.channel_map is None:
             return (False, "`self.channel_map` not found")
         if not all(self.channel_map.ch_type):
@@ -199,7 +230,7 @@ class ConfigureEDF(SessionBase):
                     'in the "Map Channels" menu')
         if self.time_range[0] > self.time_range[1]:
             return (False, f"Specified start time `{self.time_range[0]}` "
-                    "occurs after end time `{self.time_range[1]}`")
+                    f"occurs after end time `{self.time_range[1]}`")
         if self.time_range[0] < self.edf['start_ts']:
             return (False, f"Specified start time `{self.time_range[0]}` " 
                     f"occurs before EDF start time `{self.edf['start_ts']}`")
@@ -210,12 +241,24 @@ class ConfigureEDF(SessionBase):
             return (True, "Configuration valid, please confirm & save (will overwrite previous)")
         
     def save_configuration(self):
-        # self.channel_map.to_csv(
-        #     f"{self.get_analysis_path()}/channel_map.csv",
-        #     index=False
-        # )
+        """
+        Writes config file to `ANALYSIS_STORE`/`ANALYSIS`/EDFconfiog.json.
+        """
         self.write_configuration(
-            self.construct_configuration(),
-            self.analysis,
+            config=self.construct_configuration(),
+            analysis=self.analysis,
             name="EDFconfig.json"
         )
+
+    @staticmethod
+    def validate_file(file: UploadedFile) -> tuple:
+        """
+        Checks for user inputs to the st.file_uploader for EDF submission.
+        """
+        if file is None:
+            return (False, "No file detected (may take a moment even when loading bar is full)")
+        ext = file.name.split('.')[-1].lower()
+        if not ext == 'edf':
+            return (False, f'Only accepts .edf file extension, not "{ext}"')
+        else:
+            return (True, "Valid file")

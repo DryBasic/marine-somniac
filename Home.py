@@ -1,26 +1,27 @@
 import streamlit as st
 from modules.ConfigureSession import SessionConfig
-from config import *
+import config as cfg
 
 __PAPER_LINK = ''
 
 st.set_page_config(
-    page_title=APP_NAME,
+    page_title=cfg.APP_NAME,
     initial_sidebar_state='expanded',
     layout='centered',
     page_icon='assets/logo_dark.jpeg'
 )
+SessionConfig.initialize_session()
 
 title, image = st.columns([4,2])
 with title:
-    st.title(APP_NAME)
+    st.title(cfg.APP_NAME)
     st.subheader('Sleep scoring for our aquatic pals')
 with image:
     SessionConfig.insert_logo(sidebar=False)
 
 
 st.markdown(
-    f"Welcome to {APP_NAME}! This is a tool for partially automating sleep stage scoring. "
+    f"Welcome to {cfg.APP_NAME}! This is a tool for partially automating sleep stage scoring. "
     "While this app was built with Northern elephant seals in mind, many utilities are "
     "generalizeable to other organisms, namely the computation of aggregate/windowed features "
     "from electrophysiological data (EEG, ECG) such as frequency power or heart rate."
