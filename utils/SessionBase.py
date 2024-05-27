@@ -50,6 +50,9 @@ class SessionBase:
             if session_var not in st.session_state:
                 st.session_state[session_var] = None
 
+        if cfg.ANALYSIS_STORE not in os.listdir(os.getcwd()):
+            os.mkdir(cfg.ANALYSIS_STORE)
+
     @staticmethod
     def write_edf(file: UploadedFile, parent_dir):
         session_dir = f'{cfg.ANALYSIS_STORE}/{parent_dir}'
