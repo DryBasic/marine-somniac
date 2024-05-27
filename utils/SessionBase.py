@@ -19,6 +19,10 @@ class SessionBase:
             return (True, "Pass")
 
     @staticmethod
+    def get_analysis_path(analysis: str) -> str:
+        return f"{cfg.ANALYSIS_STORE}/{analysis}"
+
+    @staticmethod
     def get_existing_analyses() -> list:
         return os.listdir('filestore')
     
@@ -63,7 +67,7 @@ class SessionBase:
 
     @staticmethod
     def write_configuration(config: dict, analysis, name):
-        path = f"{cfg.ANALYSIS_STORE}/{analysis}/{name}"
+        path = f"{SessionBase.get_analysis_path(analysis)}/{name}"
         with open(path, "w") as f:
             json.dump(config, f, default=str)
             

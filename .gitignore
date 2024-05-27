@@ -1,3 +1,4 @@
 test.ipynb
 filestore/**
 **/__pycache__/**
+**/venv/**

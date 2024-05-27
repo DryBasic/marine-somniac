@@ -1,9 +1,11 @@
 import streamlit as st
 import pandas as pd
+import json
 from datetime import datetime, timedelta
 import modules.instructions as instruct
 from utils.SessionBase import SessionBase
 from utils.EDF import EDFutils
+from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 
 @st.cache_data(show_spinner=False)
@@ -24,9 +26,14 @@ class ConfigureEDF(SessionBase):
         self.channel_map = None
         self.time_range = None
 
-    def upload_file(self) -> None:
+    def upload_file(self: UploadedFile) -> None:
         file = st.file_uploader('Drop your EDF file here')
-        if st.button('Save EDF to analysis', disabled=file is None):
+        file_validity = self.validate_file(file)
+        if not file_validity[0]:
+            st.error(file_validity[1])
+        else:
+            st.success(file_validity[1])
+        if st.button('Save EDF to analysis', disabled=not file_validity[0]):
             with st.spinner('Writing file to disk, this may take a minute...'):
                 self.write_edf(file, self.analysis)
 
@@ -80,9 +87,13 @@ class ConfigureEDF(SessionBase):
         self.time_range = (user_start, user_end)
         
     def channel_mapping(self) -> None:
+        # TODO: read in existing config
+
+        ch_default = None 
         picked_channels = st.multiselect(
             'What channels will you be using?',
-            options=self.edf['channels']
+            options=self.edf['channels'],
+            default=ch_default
         )
         channel_map = pd.DataFrame(
             picked_channels,
@@ -115,7 +126,28 @@ class ConfigureEDF(SessionBase):
         if not all(self.channel_map.ch_type):
             st.error("Ensure all channel types are specified")
 
-    def get_configuration(self) -> dict:
+    # TODO
+    def retrieve_configuration(self, filetype) -> None|pd.DataFrame|dict:
+        """
+        Check if config files exist in the analysis directory and return them.
+        Used for loading previous values in config editors.
+        """
+        config_exists = False
+        if config_exists:
+            match filetype:
+                case "EDFconfig.json":
+                    path = ''
+                    with open(path) as f:
+                        edfconfig = json.load(f)
+                    return edfconfig
+                case "channel_map.csv":
+                    path = ''
+                    channel_map = pd.read_csv(path)
+                    return channel_map
+        else:
+            return None
+
+    def construct_configuration(self) -> dict:
         config = {
             'time': {
                 'start': self.time_range[0],
@@ -148,6 +180,16 @@ class ConfigureEDF(SessionBase):
                 config['channels']['freq'][row['ch_freq']] = []
             config['channels']['freq'][row['ch_freq']].append(row['ch_name'])
         return config
+    
+    @staticmethod
+    def validate_file(file) -> tuple:
+        if file is None:
+            return (False, "No file detected (may take a moment even when loading bar is full)")
+        ext = file.name.split('.')[-1].lower()
+        if not ext == 'edf':
+            return (False, f'Only accepts .edf file extension, not "{ext}"')
+        else:
+            return (True, "Valid file")
 
     def validate_configuration(self) -> tuple:
         if self.channel_map is None:
@@ -166,3 +208,14 @@ class ConfigureEDF(SessionBase):
                     f"occurs after EDF end time `{self.edf['end_ts']}`")
         else:
             return (True, "Configuration valid, please confirm & save (will overwrite previous)")
+        
+    def save_configuration(self):
+        # self.channel_map.to_csv(
+        #     f"{self.get_analysis_path()}/channel_map.csv",
+        #     index=False
+        # )
+        self.write_configuration(
+            self.construct_configuration(),
+            self.analysis,
+            name="EDFconfig.json"
+        )
