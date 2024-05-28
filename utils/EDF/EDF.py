@@ -1,12 +1,22 @@
+import inspect
 from datetime import timedelta, datetime
 from typing import Self
 import pandas as pd
 import mne
 from .Channel import Channel
+from .EXGChannel import EXGChannel
+from .ECGChannel import ECGChannel
 
 
 class EDFutils:
     def __init__(self, filepath, fetch_metadata=True, config:dict=None) -> None:
+        self._route_object = {
+            'Other': Channel,
+            'Motion': Channel,
+            'EEG': EXGChannel,
+            'ECG': ECGChannel
+        }
+        
         self.filepath = filepath
         self.time_range = (None, None)
         self.channel_types = {}
@@ -46,13 +56,22 @@ class EDFutils:
                     raw.crop(tmin=self.time_range[0], tmax=self.time_range[1])
                 signal, time = raw[0]
 
-            return Channel(
+            channel_obj = Channel
+            if self.channel_types:
+                ch_type = self.channel_types[item]
+                channel_obj = self._route_object.get(ch_type)
+                if channel_obj is None:
+                    raise Exception(f"Does not accept `{ch_type}` as channel type "
+                                    "only EEG, ECG, Motion, and Other")
+
+            return channel_obj(
                 start_ts=self.start_ts,
                 end_ts=self.end_ts,
                 name=item,
                 signal=signal[0],
                 time=time,
-                freq=self.channel_freqs[item]
+                freq=self.channel_freqs[item],
+                type_=self.channel_types.get(item)
             )
         
     def get_channel_frequency(self, ch_name):
@@ -90,3 +109,17 @@ class EDFutils:
         """
         pass
 
+    def get_channel_methods(self, ch_name):
+        ch_type = self.channel_types[ch_name]
+        channel_obj = self._route_object[ch_type]
+        return [i for i in dir(channel_obj) if 'get' in i and '__' not in i]
+
+    def get_method_args(self, ch_name, method):
+        ch_type = self.channel_types[ch_name]
+        channel_obj = self._route_object[ch_type]
+        argspec = inspect.getfullargspec(
+            getattr(channel_obj, method)
+        )
+        args = [arg for arg in argspec.args if arg != 'self']
+        arg_defaults = argspec.defaults
+        return (args, arg_defaults)

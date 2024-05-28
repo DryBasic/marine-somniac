@@ -1,9 +1,14 @@
 import streamlit as st
 
+
 PICK_ANALYSIS_HELP = 'You can create an analysis in the "Start New Analysis" page.'
+CHANNEL_TYPE_HELP = 'The channel type tells us what features should be built off a given channel.'
+FEATURE_FREQUENCY_HELP = "All features genereated herein must be of the same output frequency. " \
+                         "This widget is where that output frequency is specified."
+N_COMPS_HELP = "You may want to calculate multiple instances of a feature to experiment with different " \
+               "parameters like window sizes, etc."
+
 ANALYSIS_NAME = 'This will be a directory name, special characters may be rejected'
-UPLOAD_HELP = "Drop only one of each file type here (only 1 .edf, 1 .edfconfig, 1 .labelconfig)"
-CHANNEL_TYPE_HELP = ""
 
 def feature_generation():
     # Instruct which feature computations are recommended

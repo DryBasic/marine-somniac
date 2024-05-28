@@ -15,6 +15,7 @@ class SessionConfig(SessionBase):
                     options=['']+self.get_existing_analyses(),
                     help=instruct.PICK_ANALYSIS_HELP
                 )
+            self.insert_logo()
 
     def get_edfconfig(self) -> dict:
         path = self.get_file_from_analysis('EDFconfig.json')
@@ -28,7 +29,7 @@ class SessionConfig(SessionBase):
     
     def validate_analysis(self, modes: list) -> tuple:
         if 'edfconfig' in modes:
-            if self.analysis == '':
+            if not self.analysis:
                 return (False, "Select your analysis to get started.")
             cfg_path = self.get_file_from_analysis('EDFconfig.json')
             if cfg_path is None:
