@@ -126,7 +126,7 @@ class Channel:
             columns=['time', self.name]
         )
 
-    def get_rolling_mean(self, window_sec=30, step_size=1) -> Self:
+    def get_rolling_mean(self, window_sec:int=30, step_size:int=1) -> Self:
         """
         Calculate rolling mean over Channel.signal. Returns new Channel instance
         window_sec: window size for rolling mean in seconds
@@ -136,7 +136,7 @@ class Channel:
             .mean()[::self.freq].values
         return self._return(rolling_mean, step_size)
 
-    def get_rolling_std(self, window_sec=30, step_size=1) -> Self:
+    def get_rolling_std(self, window_sec:int=30, step_size:int=1) -> Self:
         """
         Calculate rolling standard deviation over Channel.signal. 
         Returns new Channel instance

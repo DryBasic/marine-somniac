@@ -6,7 +6,7 @@ from sleepecg import detect_heartbeats
 
 
 class ECGChannel(EXGChannel):
-    def get_heart_rate(self, search_radius=200) -> Self:
+    def get_heart_rate(self, search_radius:int=200) -> Self:
         """
         Gets heart rate at 1 Hz and extrapolates it to the same frequency as input data
         search_radius: search radius to look for peaks (200 ~= 150 bpm upper bound)
