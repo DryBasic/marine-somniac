@@ -6,6 +6,7 @@ UPLOAD_HELP = "Drop only one of each file type here (only 1 .edf, 1 .edfconfig, 
 CHANNEL_TYPE_HELP = ""
 
 def feature_generation():
+    # Instruct which feature computations are recommended
     st.markdown('')
 
 def get_started():

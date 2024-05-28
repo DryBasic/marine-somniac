@@ -33,7 +33,7 @@ if mode == 'Start New Analysis':
     # analysis_description = st.text_area(
     #     'Give an optional description of your analysis'
     # )
-    session_validity = session.validate_analysis(analysis_name)
+    session_validity = session.validate_analysis_name(analysis_name)
     st.subheader("Upload a file to save your analysis")
     st.write('After uploading your file, switch to the "Edit Existing" workflow')
 
@@ -66,7 +66,7 @@ else:
         with st.expander("Upload/Overwrite File", True):
             edfWidgets.upload_file()
 
-        if not session.get_edf_from_analysis(analysis_name):
+        if not ConfigureEDF.get_edf_from_analysis(analysis_name):
             st.error("No EDF file associated with this analysis. Please upload one.")
 
         elif mode == 'Edit Existing':

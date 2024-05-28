@@ -6,7 +6,21 @@ import config as cfg
 
 class SessionBase:
     @staticmethod
-    def validate_analysis(analysis: str):
+    def initialize_session() -> None:
+        """
+        Initializes session_state variables. Creates analysis store directory.
+        """
+        SESSION_VARS = (
+        )
+        for session_var in SESSION_VARS:
+            if session_var not in st.session_state:
+                st.session_state[session_var] = None
+
+        if cfg.ANALYSIS_STORE not in os.listdir(os.getcwd()):
+            os.mkdir(cfg.ANALYSIS_STORE)
+
+    @staticmethod
+    def validate_analysis_name(analysis: str):
         """
         Confirm that analysis string is a valid directory name and
         that it does not already exist.
@@ -46,25 +60,6 @@ class SessionBase:
                 elif ext == 'edf' and path:
                     return f"{cfg.ANALYSIS_STORE}/{analysis}/{file}"
         return None
-
-    @staticmethod
-    def initialize_session() -> None:
-        """
-        Initializes session_state variables. Creates analysis store directory.
-        """
-        SESSION_VARS = (
-            'analysis',
-            'edf_path',
-            'label_path',
-            'EDF',
-            'labels',
-        )
-        for session_var in SESSION_VARS:
-            if session_var not in st.session_state:
-                st.session_state[session_var] = None
-
-        if cfg.ANALYSIS_STORE not in os.listdir(os.getcwd()):
-            os.mkdir(cfg.ANALYSIS_STORE)
 
     @staticmethod
     def read_json(path) -> dict:

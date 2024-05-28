@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta, datetime
 import modules.instructions as instruct
 from utils.SessionBase import SessionBase
-from utils.EDF import EDFutils
+from utils.EDF.EDF import EDFutils
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 
@@ -187,6 +187,10 @@ class ConfigureEDF(SessionBase):
                 'end': datetime.strftime(self.time_range[1], self.date_str_format), 
                 'tz': None
             },
+            'raw_time': {
+                'start': datetime.strftime(self.edf['start_ts'], self.date_str_format),
+                'end': datetime.strftime(self.edf['end_ts'], self.date_str_format)
+            },
             'channels': {
                 'picked': [],
                 'map': {
@@ -196,8 +200,9 @@ class ConfigureEDF(SessionBase):
                     'Other': [],
                     'ignore': []
                 },
-                'freq': {}
-            }
+                'freq': {},
+            },
+            'channels_': {}
         }
         channel_map = config['channels']['map']
         channel_freqs = config['channels']['freq']
@@ -211,6 +216,8 @@ class ConfigureEDF(SessionBase):
             if ch_freq not in channel_freqs:
                 channel_freqs[ch_freq] = []
             channel_freqs[ch_freq].append(ch_name)
+
+            config['channels_'][ch_name] = (ch_type, ch_freq)
 
         for ch in self.edf['channels']:
             if ch not in config['channels']['picked']:
