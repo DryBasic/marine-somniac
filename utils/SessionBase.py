@@ -20,7 +20,7 @@ class SessionBase:
             os.mkdir(cfg.ANALYSIS_STORE)
 
     @staticmethod
-    def validate_analysis_name(analysis: str):
+    def validate_analysis_name(analysis: str) -> tuple[bool, str]:
         """
         Confirm that analysis string is a valid directory name and
         that it does not already exist.
@@ -33,7 +33,7 @@ class SessionBase:
             return (True, "Pass")
 
     @staticmethod
-    def get_analysis_files(analysis: str):
+    def get_analysis_files(analysis: str) -> str:
         return os.listdir(f"{cfg.ANALYSIS_STORE}/{analysis}")
 
     @staticmethod
@@ -72,7 +72,7 @@ class SessionBase:
         return json_dict
 
     @staticmethod
-    def write_edf(file: UploadedFile, parent_dir):
+    def write_edf(file: UploadedFile, parent_dir) -> None:
         """
         Take the EDF file in the form streamlit's UploadedFile object (return type of
         st.file_uploader), read it into bytes, then write to disk under the configurable
@@ -92,7 +92,7 @@ class SessionBase:
             f.write(file_bytes)
 
     @staticmethod
-    def write_configuration(config: dict, analysis, name):
+    def write_configuration(config: dict, analysis, name) -> None:
         """
         Write a dictionary to a json file under the specfied analysis directory.
         """

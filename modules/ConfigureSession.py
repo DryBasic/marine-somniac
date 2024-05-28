@@ -17,20 +17,20 @@ class SessionConfig(SessionBase):
                 )
             self.insert_logo()
 
-    def get_analysis_files(self):
+    def get_analysis_files(self) -> str:
         return SessionBase.get_analysis_files(self.analysis)
 
     def get_edfconfig(self) -> dict:
         path = self.get_file_from_analysis('EDFconfig.json')
         return self.read_json(path)
 
-    def get_edf_from_analysis(self):
+    def get_edf_from_analysis(self) -> str:
         return SessionBase.get_edf_from_analysis(self.analysis, path=True)
     
-    def get_file_from_analysis(self, file):
+    def get_file_from_analysis(self, file) -> str:
         return SessionBase.get_file_from_analysis(self.analysis, file)
     
-    def validate_analysis(self, modes: list) -> tuple:
+    def validate_analysis(self, modes: list) -> tuple[bool, str]:
         if 'edfconfig' in modes:
             if not self.analysis:
                 return (False, "Select your analysis to get started.")
@@ -45,7 +45,7 @@ class SessionConfig(SessionBase):
         return (True, "Pass")
 
     @staticmethod
-    def insert_logo(sidebar=True):
+    def insert_logo(sidebar=True) -> None:
         theme = st_theme()['base']
         if sidebar:
             st.sidebar.image(f'assets/sidebar_logo_{theme}.jpeg')

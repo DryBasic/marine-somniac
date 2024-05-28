@@ -74,7 +74,7 @@ class EDFutils:
                 type_=self.channel_types.get(item)
             )
         
-    def get_channel_frequency(self, ch_name):
+    def get_channel_frequency(self, ch_name) -> int:
         with mne.io.read_raw_edf(self.filepath, include=[ch_name], preload=False) as raw:
             freq = len(raw.crop(tmin=0, tmax=1).pick(ch_name).get_data()[0])-1
         return freq
@@ -109,12 +109,12 @@ class EDFutils:
         """
         pass
 
-    def get_channel_methods(self, ch_name):
+    def get_channel_methods(self, ch_name) -> list:
         ch_type = self.channel_types[ch_name]
         channel_obj = self._route_object[ch_type]
         return [i for i in dir(channel_obj) if 'get' in i and '__' not in i]
 
-    def get_method_args(self, ch_name, method):
+    def get_method_args(self, ch_name, method) -> tuple[list, list]:
         ch_type = self.channel_types[ch_name]
         channel_obj = self._route_object[ch_type]
         argspec = inspect.getfullargspec(

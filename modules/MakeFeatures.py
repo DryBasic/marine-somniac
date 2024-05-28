@@ -24,7 +24,7 @@ class MakeFeatures(SessionConfig):
             help=instruct.FEATURE_FREQUENCY_HELP
         )
     
-    def configure_channel_method(self, ch_name, computation, key_str='') -> dict:
+    def specify_computation_arguments(self, ch_name, computation, key_str='') -> dict:
         """
         Generate the widgets that allow the user to modify the parameters
         going into a feature computation. Sets defaults and gives argument
@@ -49,8 +49,11 @@ class MakeFeatures(SessionConfig):
             )
 
         return arg_vals
+    
+    def computation_derivatives(self):
+        pass
 
-    def computation_popover(self, ch_name, computation) -> dict:
+    def specify_computations(self, ch_name, computation) -> dict:
         """
         Create a popover to contain the configuration of a feature computation.
         """
@@ -63,23 +66,23 @@ class MakeFeatures(SessionConfig):
                         key=f"{ch_name}{computation}",
                         help=instruct.N_COMPS_HELP
                     )
-                st.divider()
                 st.markdown(f"**Parameters for {computation} Calculation**")
                 for i in range(n):
                     st.markdown(f"Instance {i+1}")
                     comp_config['self'].append(
-                        self.configure_channel_method(ch_name, computation, str(i))
+                        self.specify_computation_arguments(ch_name, computation, str(i))
                     )
                     
+            deriv_source = self.format_method_arg_labels(argset=comp_config['self'])
             with drv:
                 derive_from = st.multiselect(
                     'Derive from',
-                    options=cfg.FEATURE_OPTIONS['Other'],
+                    options=deriv_source,
                     key=f"{ch_name}{computation}deriv"
                 )
             return comp_config
 
-    def specify_computations(self) -> None:
+    def specify_computations_per_channel(self) -> None:
         """
         Create expanders for each specified channel and let user specify which
         features should be computed from it. Modifies self.feature_config to contain
@@ -98,15 +101,61 @@ class MakeFeatures(SessionConfig):
                 
                 for comp in compute[ch_name]:
                     method = cfg.FEATURE_OPTIONS['all'][comp].__name__
-                    self.feature_config[ch_name][method] = self.computation_popover(ch_name, comp)
+                    self.feature_config[ch_name][method] = self.specify_computations(ch_name, comp)
                 
-                st.divider()
+                validity = self.validate_channel_configuration(self.feature_config[ch_name])
+                
+                if not validity[0]:
+                    st.error(validity[1])
+                else:
+                    st.success(validity[1])
 
-        st.write(self.feature_config)
+
+    # TODO
+    def validate_channel_configuration(self, channel_config) -> tuple[bool, str]:
+        if not channel_config:
+            return (False, "No features specified. Either remove this channel from the main "
+                    "configuration, or specify features to compute from this channel.")
+        
+        return (True, "Configuration valid")
+
+    # TODO
+    def validate_configuration(self) -> tuple[bool, str]:
+        validities = []
+        for channel_config in self.feature_config.values():
+            validities.append(self.validate_channel_configuration(channel_config)[0])
+
+        if not all(validities):
+            return (False, "One or more channels have invalid configurations.")
+        return (True, "All configurations valid. Saving this configuration will overwrite the previous.")
+    
+    # TODO
+    def retrieve_configuration(self) -> dict:
+        pass
+
+    def save_configuration(self) -> None:
+        self.write_configuration(
+            config=self.feature_config,
+            name='MakeFeatures.json'
+        )
 
     @staticmethod
-    def format_method_arg_label(computation_name: str, args: dict) -> str:
-        pass
+    def format_method_arg_labels(argset: list[dict]) -> str:
+
+        def remove_chain(base_str: str, replacements: list):
+            removed = base_str
+            for r in replacements:
+                removed = removed.replace(r, '') 
+            return removed
+        
+        labels = []
+        remove = ["'", '"', '{', '}']
+        for i, arg_dict in enumerate(argset):
+            instance = i+1
+            labels.append(
+                f"{instance}: ({remove_chain(str(arg_dict), remove)})"
+            )
+        return labels
 
     @staticmethod
     def extract_arg_desc_from_docstring(doc_str: str, arg: str) -> str:
@@ -117,3 +166,4 @@ class MakeFeatures(SessionConfig):
         """
         desc = doc_str.split(f"{arg}:")[1].split('\n')[0]
         return desc
+    
