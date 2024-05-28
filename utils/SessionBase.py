@@ -33,6 +33,10 @@ class SessionBase:
             return (True, "Pass")
 
     @staticmethod
+    def get_analysis_files(analysis: str):
+        return os.listdir(f"{cfg.ANALYSIS_STORE}/{analysis}")
+
+    @staticmethod
     def get_analysis_path(analysis: str) -> str:
         return f"{cfg.ANALYSIS_STORE}/{analysis}"
 

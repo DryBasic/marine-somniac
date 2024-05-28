@@ -17,6 +17,9 @@ class SessionConfig(SessionBase):
                 )
             self.insert_logo()
 
+    def get_analysis_files(self):
+        return SessionBase.get_analysis_files(self.analysis)
+
     def get_edfconfig(self) -> dict:
         path = self.get_file_from_analysis('EDFconfig.json')
         return self.read_json(path)
