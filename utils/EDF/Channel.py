@@ -7,7 +7,7 @@ from datetime import timedelta
 
 
 class Channel:
-    def __init__(self, start_ts, name: str, signal: np.array, end_ts=None, time:np.array=None, freq=None, type_=None) -> None:
+    def __init__(self, start_ts, end_ts, name: str, signal: np.array, time:np.array=None, freq=None, type_=None) -> None:
         self.name = name
         self.time = time
         self.signal = signal
@@ -15,9 +15,6 @@ class Channel:
         self.type = type_
         self.start_ts = start_ts
         self.end_ts = end_ts if end_ts else self.start_ts + timedelta(seconds=time[-1])
-        
-        # TODO store reference to parent EDFutils obj and have each 
-        # construction trigger storage in cache
             
     def __getitem__(self, slice) -> Self:
         """
@@ -108,7 +105,8 @@ class Channel:
         new_time = self.time[::self.freq//step_size]
         new_freq = 1/step_size
         return Channel(
-            start_ts=self._start_ts,
+            start_ts=self.start_ts,
+            end_ts=self.end_ts,
             name=new_name,
             signal=new_signal,
             time=new_time,
@@ -116,15 +114,13 @@ class Channel:
             # TODO support for non-integer frequencies?
         )
     
-    def to_DataFrame(self) -> pd.DataFrame:
+    def downsample(self, ds_freq:int=1):
         """
-        Returns 2-column pandas DataFrame of time and signal
+        ds_freq: frequency in Hz to which this channel will be downsampled
         """
-        assert len(self.signal) == len(self.time)
-        return pd.DataFrame(
-            data=np.array([self.time, self.signal]).T,
-            columns=['time', self.name]
-        )
+        ss = self.freq//ds_freq
+        ds_sig = self.signal[::ss]
+        return self._return(ds_sig, step_size=ss)
 
     def get_rolling_mean(self, window_sec:int=30, step_size:int=1) -> Self:
         """
@@ -169,7 +165,18 @@ class Channel:
                 accum.append(process(self.signal, window_start, window_end))
         return np.array(accum)
     
+    def to_DataFrame(self) -> pd.DataFrame:
+        """
+        Returns 2-column pandas DataFrame of time and signal
+        """
+        assert len(self.signal) == len(self.time)
+        return pd.DataFrame(
+            data=np.array([self.time, self.signal]).T,
+            columns=['time', self.name]
+        )
+
     def visualize(self):
         """
         """
         pass
+

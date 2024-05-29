@@ -16,8 +16,10 @@ class MakeFeatures(SessionConfig):
             config=self.get_edfconfig() 
         )
         self.feature_config = {}
+        self.config_name = "MakeFeatures.json"
+        self.feature_data_name = "features.csv"
 
-    def configure_(self) -> None:
+    def configure_output_freq(self) -> None:
         self.output_freq = st.number_input(
             "Output frequency (Hz)",
             min_value=1,
@@ -110,8 +112,6 @@ class MakeFeatures(SessionConfig):
                 else:
                     st.success(validity[1])
 
-
-    # TODO
     def validate_channel_configuration(self, channel_config) -> tuple[bool, str]:
         if not channel_config:
             return (False, "No features specified. Either remove this channel from the main "
@@ -119,7 +119,6 @@ class MakeFeatures(SessionConfig):
         
         return (True, "Configuration valid")
 
-    # TODO
     def validate_configuration(self) -> tuple[bool, str]:
         validities = []
         for channel_config in self.feature_config.values():
@@ -127,7 +126,8 @@ class MakeFeatures(SessionConfig):
 
         if not all(validities):
             return (False, "One or more channels have invalid configurations.")
-        return (True, "All configurations valid. Saving this configuration will overwrite the previous.")
+        return (True, "All configurations valid. "
+                "Saving this configuration will overwrite the previous.")
     
     # TODO
     def retrieve_configuration(self) -> dict:
@@ -135,9 +135,18 @@ class MakeFeatures(SessionConfig):
 
     def save_configuration(self) -> None:
         self.write_configuration(
+            analysis=self.analysis,
             config=self.feature_config,
-            name='MakeFeatures.json'
+            name=self.config_name
         )
+        st.toast(f"Configuration saved.")
+
+    # TODO
+    def build_features(self):
+        with st.spinner("Calculating features, this may take a while..."):
+            pass
+            # df.to_csv(f"{}/{self.feature_data_name}")
+        st.toast("Features computed and saved to analysis.")
 
     @staticmethod
     def format_method_arg_labels(argset: list[dict]) -> str:

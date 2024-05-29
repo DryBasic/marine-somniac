@@ -19,7 +19,7 @@ if not validity[0]:
     st.error(validity[1])
 else:
     page = MakeFeatures(session.analysis)
-    page.configure_()
+    page.configure_output_freq()
     page.specify_computations_per_channel()
 
     valid = page.validate_configuration()
@@ -28,8 +28,9 @@ else:
     else:
         st.success(valid[1])
 
-    if st.button("Save Configuration", disabled=not valid[0]):
+    if st.button("Save Configuration & Build Features", disabled=not valid[0]):
         page.save_configuration()
+        page.build_features()
 
     st.divider()
     with st.expander('View Configuration'):

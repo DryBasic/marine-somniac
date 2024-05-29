@@ -5,6 +5,7 @@ import modules.instructions as instruct
 from utils.SessionBase import SessionBase
 from utils.EDF.EDF import EDFutils
 from streamlit.runtime.uploaded_file_manager import UploadedFile
+import config as cfg
 
 
 @st.cache_data(show_spinner=False)
@@ -25,6 +26,7 @@ class ConfigureEDF(SessionBase):
         self.channel_map = None
         self.time_range = None
         self.date_str_format = '%Y-%m-%d %H:%M:%S.%f'
+        self.config_name = "EDFconfig.json"
 
     def upload_file(self: UploadedFile) -> None:
         file = st.file_uploader('Drop your EDF file here')
@@ -85,7 +87,7 @@ class ConfigureEDF(SessionBase):
                 "ch_type": st.column_config.SelectboxColumn(
                     "Channel Type",
                     help=instruct.CHANNEL_TYPE_HELP,
-                    options=[None, "EEG", "ECG", "Motion", "Other"],
+                    options=[None]+cfg.CHANNEL_TYPES,
                     required=True
                 ),
                 "ch_freq": st.column_config.NumberColumn(
@@ -254,8 +256,9 @@ class ConfigureEDF(SessionBase):
         self.write_configuration(
             config=self.construct_configuration(),
             analysis=self.analysis,
-            name="EDFconfig.json"
+            name=self.config_name
         )
+        st.toast(f"Configuration saved.")
 
     @staticmethod
     def validate_file(file: UploadedFile) -> tuple:

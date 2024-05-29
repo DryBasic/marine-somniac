@@ -1,5 +1,5 @@
 import streamlit as st
-
+import config as cfg
 
 PICK_ANALYSIS_HELP = 'You can create an analysis in the "Start New Analysis" page.'
 CHANNEL_TYPE_HELP = 'The channel type tells us what features should be built off a given channel.'
@@ -15,15 +15,19 @@ def feature_generation():
     st.markdown('')
 
 def get_started():
-    st.title("Mapping your files")
-    st.markdown("""
+    st.subheader('Getting Started')
+    st.markdown(
+        "Please note, this tool only functions on data of the .edf format. "
+        "We have found that most feature computations are more effective on electrophysiological data "
+        f"that has already undergone [some degree of processing (ICA)]({cfg.__PAPER_LINK}). "
+    )
+    st.markdown("**Mapping your files**")
+    st.markdown(f"""
         This application needs to know a few details about your data before we can get started
-        with your analysis. This is where you can specify things like which channels you'll
+        with your analysis. In the ***{cfg.GET_STARTED}*** page, you can specify things like which channels you'll
         be exploring and letting the application know what they are. Configurations need to be 
         specified for both your EDF data as well as any label data (if you will be training your
-        own models). The returned config files have custom file extensions of `edfyml` and 
-        `labelyml`, but this is just for file type detection; the configurations themselves are 
-        simply YAML. 
+        own models).
     """)
 
     with st.expander("Configuration Summary & File Constraints"):
@@ -38,8 +42,9 @@ def get_started():
         """)
 
     st.markdown("""        
-        You only have to do this once per analysis (just make sure to download your config files!).
-        If you ever need to edit your configuration, just upload it in the sidebar and modify it
-        in this page. You'll need to re-download the configurations after modification.
+        You only have to do this once per analysis. If you ever need to edit your configuration, you can 
+        simply return to that page, make your edits, and save them.
     """)
-    st.subheader("Start a new analysis below")
+
+def compute_features():
+    st.subheader("Computing Features")

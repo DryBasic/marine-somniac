@@ -1,8 +1,7 @@
 import streamlit as st
 from modules.ConfigureSession import SessionConfig
+import modules.instructions as instruct
 import config as cfg
-
-__PAPER_LINK = ''
 
 st.set_page_config(
     page_title=cfg.APP_NAME,
@@ -26,10 +25,10 @@ st.markdown(
     "generalizeable to other organisms, namely the computation of aggregate/windowed features "
     "from electrophysiological data (EEG, ECG) such as frequency power or heart rate."
 )
+st.markdown("""
+    This tool will save your uploaded data to a remote server on which all computations will be 
+    performed.
+""")
+instruct.get_started()
+instruct.compute_features()
 
-st.subheader('Getting Started')
-st.markdown(
-    "Please note, this tool only functions on data of the .edf format. "
-    "We have found that most feature computations are more effective on electrophysiological data "
-    f"that has already undergone [some degree of processing (ICA)]({__PAPER_LINK}). "
-)
