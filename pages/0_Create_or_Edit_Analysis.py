@@ -18,6 +18,9 @@ st.set_page_config(
 session = SessionConfig(sidebar_widget=False)
 session.insert_logo()
 
+with st.expander("Read this if you plan to use a pre-trained model"):
+    instruct.model_constraints()
+
 mode = st.radio(
     'Create or Edit',
     options=['Start New Analysis', 'Edit Existing'],

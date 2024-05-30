@@ -20,18 +20,28 @@ if not validity[0]:
 else:
     page = MakeFeatures(session.analysis)
     page.configure_output_freq()
-    page.specify_computations_per_channel()
+    top = st.container()
 
-    valid = page.validate_configuration()
-    if not valid[0]:
-        st.error(valid[1])
-    else:
-        st.success(valid[1])
+    st.radio(
+        "Choose a starting point",
+        options=["Custom", 'Base Model', 'Extended Model', 'Refined Model'],
+        horizontal=True
+    )
+    conf, build = st.tabs(['Configure', 'Build & Explore Features'])
 
-    if st.button("Save Configuration & Build Features", disabled=not valid[0]):
-        page.save_configuration()
-        page.build_features()
+    with conf:
+        page.specify_computations_per_channel()
 
-    st.divider()
-    with st.expander('View Configuration'):
+        valid = page.validate_configuration()
+        if not valid[0]:
+            st.error(valid[1])
+        else:
+            st.success(valid[1])
+
+        if st.button("Save Configuration", disabled=not valid[0], use_container_width=True):
+            page.save_configuration()
+            page.build_features()
+
+
+    with top.expander('View Current Configuration'):
         st.write(page.feature_config)

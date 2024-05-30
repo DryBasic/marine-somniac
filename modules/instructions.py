@@ -14,6 +14,16 @@ def feature_generation():
     # Instruct which feature computations are recommended
     st.markdown('')
 
+def model_constraints():
+    st.markdown('''
+        To use any of the existing models, you will need:
+        * 1x Gyroscopic Channel (Z)
+        * 1x Pressure Channel
+        * 1x ODBA Channel
+        * 1x ECG Channel
+        * 1x EEG Channel
+    ''')
+
 def get_started():
     st.subheader('Getting Started')
     st.markdown(

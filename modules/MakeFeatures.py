@@ -3,7 +3,7 @@ import pandas as pd
 import modules.instructions as instruct
 from utils.EDF.EDF import EDFutils
 from modules.ConfigureSession import SessionConfig
-from config.channelcompute import FEATURE_OPTIONS
+from config.channelcompute import FEATURE_OPTIONS, DERIVANDS, EPOCH_DERIVED
 
 
 class MakeFeatures(SessionConfig):
@@ -18,6 +18,7 @@ class MakeFeatures(SessionConfig):
         self.feature_config = {}
         self.config_name = "MakeFeatures.json"
         self.feature_data_name = "features.csv"
+        self.containers = {}
 
     def configure_output_freq(self) -> None:
         self.output_freq = st.number_input(
@@ -25,64 +26,6 @@ class MakeFeatures(SessionConfig):
             min_value=1,
             help=instruct.FEATURE_FREQUENCY_HELP
         )
-    
-    def specify_computation_arguments(self, ch_name, computation, key_str='') -> dict:
-        """
-        Generate the widgets that allow the user to modify the parameters
-        going into a feature computation. Sets defaults and gives argument
-        descriptions by reading the method argspec and docstring.
-        """
-        method = FEATURE_OPTIONS['all'][computation]
-        method_name = method.__name__
-        method_argspec = self.edf.get_method_args(ch_name, method_name)
-        arg_names = method_argspec[0]
-        arg_defaults = method_argspec[1]
-        arg_descs = [self.extract_arg_desc_from_docstring(method.__doc__, arg)
-                      for arg in arg_names]
-
-        arg_vals = {}
-        c = st.columns(len(arg_names))
-        for i, arg in enumerate(arg_names):
-            arg_vals[arg] = c[i].text_input(
-                arg,
-                value=arg_defaults[i],
-                help=arg_descs[i],
-                key=f"{key_str}{ch_name}{computation}{arg}"
-            )
-
-        return arg_vals
-    
-    def computation_derivatives(self):
-        pass
-
-    def specify_computations(self, ch_name, computation) -> dict:
-        """
-        Create a popover to contain the configuration of a feature computation.
-        """
-        comp_config = {'self': [], 'derivative': []}
-        with st.popover(f"Configure {computation}", use_container_width=True):
-            slf, drv = st.tabs([f"{computation}", f'{computation} Derivatives'])
-            with slf:
-                n = st.number_input("How many instances?",
-                        min_value=1,
-                        key=f"{ch_name}{computation}",
-                        help=instruct.N_COMPS_HELP
-                    )
-                st.markdown(f"**Parameters for {computation} Calculation**")
-                for i in range(n):
-                    st.markdown(f"Instance {i+1}")
-                    comp_config['self'].append(
-                        self.specify_computation_arguments(ch_name, computation, str(i))
-                    )
-                    
-            deriv_source = self.format_method_arg_labels(argset=comp_config['self'])
-            with drv:
-                derive_from = st.multiselect(
-                    'Derive from',
-                    options=deriv_source,
-                    key=f"{ch_name}{computation}deriv"
-                )
-            return comp_config
 
     def specify_computations_per_channel(self) -> None:
         """
@@ -98,19 +41,101 @@ class MakeFeatures(SessionConfig):
                 compute[ch_name] = st.multiselect(
                     "Calculate features",
                     options=FEATURE_OPTIONS[ch_type],
-                    key=f"{ch_name}round1"
+                    key=f"{ch_name}-pick-derivatives"
                 )
-                
                 for comp in compute[ch_name]:
                     method = FEATURE_OPTIONS['all'][comp].__name__
-                    self.feature_config[ch_name][method] = self.specify_computations(ch_name, comp)
-                
+                    comp_config = self.specify_computations(ch_name, comp)
+                    self.feature_config[ch_name][method] = comp_config
+
+                    for i, instance in enumerate(comp_config):
+                        if 'derived' in instance.keys():
+                            for dcomp in instance['derived']:
+                                comp_config[i]['derived'][dcomp] = self.specify_computations(
+                                    ch_name, dcomp, d_prefix=f"{comp} {i+1}: "
+                                )
                 validity = self.validate_channel_configuration(self.feature_config[ch_name])
                 
                 if not validity[0]:
                     st.error(validity[1])
                 else:
                     st.success(validity[1])
+                
+
+    # Really bad/confusing design here...
+    def specify_computations(self, derivand, computation, d_prefix='') -> dict:
+        """
+        Create a popover to contain the configuration of a feature computation.
+        """
+        comp_config = []
+        derivative_funcs = None
+        if computation in DERIVANDS:
+            derivative_funcs = DERIVANDS[computation]
+
+        popover = st.popover(f"Configure {d_prefix}{computation}", use_container_width=True)
+        if derivative_funcs is None:
+            container = popover.container()
+        else:
+            container, d_container = popover.tabs(
+                [f"{computation}", f'{computation} Derivatives'])
+            
+        if computation in EPOCH_DERIVED:
+            comp_config.append(FEATURE_OPTIONS['all'][computation].__name__)
+
+        else:
+            with popover:
+                with container:
+                    n = st.number_input("How many instances?",
+                            min_value=1,
+                            key=f"{derivand}{computation}",
+                            help=instruct.N_COMPS_HELP
+                        )
+                    st.markdown(f"**Parameters for {computation} Calculation**")
+                    for i in range(n):
+                        st.markdown(f"Instance {i+1}")
+                        comp_config.append({'args': 
+                            self.specify_computation_arguments(derivand, computation, str(i))
+                        })
+                        
+                if derivative_funcs is not None:
+                    deriv_source = self.format_method_arg_labels(argset=comp_config)
+                    with d_container:
+                        for i in range(n):
+                            st.markdown(f"**Instrance {deriv_source[i]}**")
+                            to_derive = st.multiselect(
+                                "Calculate features",
+                                options=derivative_funcs,
+                                key=f"{derivand}{computation}{i}"
+                            )
+                            if to_derive:
+                                comp_config[i]['derived'] = {dcomp: dcomp for dcomp in to_derive}
+
+        return comp_config
+    
+    def specify_computation_arguments(self, ch_name, computation, key_str='') -> dict:
+        """
+        Generate the widgets that allow the user to modify the parameters
+        going into a feature computation. Sets defaults and gives argument
+        descriptions by reading the method argspec and docstring.
+        """
+        method = FEATURE_OPTIONS['all'][computation]
+        method_name = method.__name__
+        method_argspec = self.edf.get_method_args(ch_name, method_name)
+        arg_names = method_argspec[0]
+        arg_defaults = method_argspec[1]
+        arg_descs = [self.extract_arg_desc_from_docstring(method.__doc__, arg)
+                        for arg in arg_names]
+
+        arg_vals = {}
+        c = st.columns(len(arg_names))
+        for i, arg in enumerate(arg_names):
+            arg_vals[arg] = c[i].text_input(
+                arg,
+                value=arg_defaults[i],
+                help=arg_descs[i],
+                key=f"{key_str}{ch_name}{computation}{arg}"
+            )
+        return arg_vals
 
     def validate_channel_configuration(self, channel_config) -> tuple[bool, str]:
         if not channel_config:
@@ -162,7 +187,7 @@ class MakeFeatures(SessionConfig):
         for i, arg_dict in enumerate(argset):
             instance = i+1
             labels.append(
-                f"{instance}: ({remove_chain(str(arg_dict), remove)})"
+                f"{instance}: ({remove_chain(str(arg_dict['args']), remove)})"
             )
         return labels
 
@@ -173,6 +198,10 @@ class MakeFeatures(SessionConfig):
         format such that the description of an argument can be extracted with the following
         string operation.
         """
-        desc = doc_str.split(f"{arg}:")[1].split('\n')[0]
-        return desc
+        if doc_str is not None:
+            if arg in doc_str:
+                desc = doc_str.split(f"{arg}:")[1].split('\n')[0]
+                return desc
+        else:
+            return ''
     
