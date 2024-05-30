@@ -12,7 +12,9 @@ class EDFutils:
     def __init__(self, filepath, fetch_metadata=True, config:dict=None) -> None:
         self._route_object = {
             'Other': Channel,
-            'Motion': Channel,
+            'Gyroscope': Channel,
+            'Pressure': Channel,
+            'ODBA': Channel,
             'EEG': EXGChannel,
             'ECG': ECGChannel
         }

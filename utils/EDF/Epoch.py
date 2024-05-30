@@ -72,7 +72,7 @@ class Epoch:
         dx = freqs[1] - freqs[0]
         return {"absolute_power": simpson(power_spectral_density[:, idx_broad], dx=dx)}
     
-    def get_welch(self, epochs, window_sec:int=4, bands:list[tuple[float, float, str]]=EEG_BANDS) -> tuple[dict, np.array, np.array]:
+    def get_welch(self, epochs=None, window_sec:int=4, bands:list[tuple[float, float, str]]=EEG_BANDS) -> tuple[dict, np.array, np.array]:
         window_length = self.freq*window_sec
         kwargs_welch = dict(
             window ='hann',

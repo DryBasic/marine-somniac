@@ -26,22 +26,36 @@ EPOCH_DERIVED = {
     'Petrosian Fractal Dimension': Epoch.get_petrosian,
     'Zero Crossings': Epoch.get_zero_crossings,
     "Welch's Power Spectral Density": Epoch.get_welch,
-    'Standard Deviation': Epoch.get_std,
+    'Standard Deviation_': Epoch.get_std,
     'Interquartile Range': Epoch.get_interquartile_range,
     'Kurtosis': Epoch.get_kurtosis,
     'Skewness': Epoch.get_skew,
 }
+
+NOT_CONFIGURABLE = [
+    'Hjorth Parameters',
+    'Permutation Entropy',
+    'Higuchi Fractal Dimension',
+    'Petrosian Fractal Dimension',
+    'Zero Crossings',
+    'Standard Deviation_',
+    'Interquartile Range',
+    'Kurtosis',
+    'Skewness'
+]
+
 WELCH_DERIVED = {}
 ECG_DERIVED = {'Heart Rate': ECGChannel.get_heart_rate}
 
 DERIVANDS = {
-    # 'Gyroscope': {**BASIC}, 'ODBA': {**BASIC}, 'Pressure': {**BASIC}, 'Other': {**BASIC},
-    # 'EEG': {**EXG_DERIVED, **BASIC},
+    'Pressure': {**BASIC}, 'ODBA': {**BASIC}, 'Gyroscope': {**BASIC}, 'Other': {**BASIC},
+    'EEG': {**EXG_DERIVED, **BASIC},
+    'ECG': {**ECG_DERIVED, **EXG_DERIVED, **BASIC},
     'Epoch': EPOCH_DERIVED,
-    # 'ECG': {**ECG_DERIVED, **EXG_DERIVED, **BASIC},
     'Heart Rate': HEARTRATE_DERIVED,
     "Welch's Power Spectral Density": WELCH_DERIVED 
 }
+LABEL_TO_METHOD = {**BASIC, **EXG_DERIVED, **ECG_DERIVED, **EPOCH_DERIVED}
 
 FEATURE_OPTIONS = {
     'all': {**BASIC, **EXG_DERIVED, **ECG_DERIVED, **EPOCH_DERIVED},

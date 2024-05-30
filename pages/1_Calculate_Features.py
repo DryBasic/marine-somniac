@@ -30,7 +30,7 @@ else:
     conf, build = st.tabs(['Configure', 'Build & Explore Features'])
 
     with conf:
-        page.specify_computations_per_channel()
+        page.specify_methods_per_channel()
 
         valid = page.validate_configuration()
         if not valid[0]:
@@ -40,8 +40,7 @@ else:
 
         if st.button("Save Configuration", disabled=not valid[0], use_container_width=True):
             page.save_configuration()
-            page.build_features()
 
 
-    with top.expander('View Current Configuration'):
-        st.write(page.feature_config)
+    # with top.expander('View Current Configuration'):
+    #     st.write(page.feature_config)
