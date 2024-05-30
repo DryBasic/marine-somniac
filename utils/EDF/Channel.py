@@ -5,7 +5,6 @@ from typing import Self
 from datetime import timedelta
 
 
-
 class Channel:
     def __init__(self, start_ts, end_ts, name: str, signal: np.array, time:np.array=None, freq=None, type_=None) -> None:
         self.name = name

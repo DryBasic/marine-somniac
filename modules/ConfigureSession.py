@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit_theme import st_theme
 import modules.instructions as instruct
 from utils.SessionBase import SessionBase
-import config as cfg
+from config.meta import GET_STARTED
 
 
 class SessionConfig(SessionBase):
@@ -37,7 +37,7 @@ class SessionConfig(SessionBase):
             cfg_path = self.get_file_from_analysis('EDFconfig.json')
             if cfg_path is None:
                 return (False, f"No specified configuration found for {self.get_edf_from_analysis()}. "
-                            f'Please create one in "{cfg.GET_STARTED}"')
+                            f'Please create one in "{GET_STARTED}"')
             
         if 'labelconfig' in modes:
             pass

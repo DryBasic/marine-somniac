@@ -2,10 +2,10 @@ import streamlit as st
 from modules.MakeFeatures import MakeFeatures
 from modules.ConfigureSession import SessionConfig
 import modules.instructions as instruct
-import config as cfg
+from config.meta import APP_NAME
 
 st.set_page_config(
-    page_title=f"{cfg.APP_NAME}: Feature Builder",
+    page_title=f"{APP_NAME}: Feature Builder",
     initial_sidebar_state='expanded',
     layout='wide'
 )

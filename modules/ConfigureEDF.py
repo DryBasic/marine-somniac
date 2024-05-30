@@ -5,7 +5,7 @@ import modules.instructions as instruct
 from utils.SessionBase import SessionBase
 from utils.EDF.EDF import EDFutils
 from streamlit.runtime.uploaded_file_manager import UploadedFile
-import config as cfg
+from config.channelcompute import CHANNEL_TYPES
 
 
 @st.cache_data(show_spinner=False)
@@ -87,7 +87,7 @@ class ConfigureEDF(SessionBase):
                 "ch_type": st.column_config.SelectboxColumn(
                     "Channel Type",
                     help=instruct.CHANNEL_TYPE_HELP,
-                    options=[None]+cfg.CHANNEL_TYPES,
+                    options=[None]+CHANNEL_TYPES,
                     required=True
                 ),
                 "ch_freq": st.column_config.NumberColumn(
@@ -195,13 +195,7 @@ class ConfigureEDF(SessionBase):
             },
             'channels': {
                 'picked': [],
-                'map': {
-                    'EEG': [],
-                    'ECG': [],
-                    'Motion': [],
-                    'Other': [],
-                    'ignore': []
-                },
+                'map': {ch: [] for ch in CHANNEL_TYPES+['ignore']},
                 'freq': {},
             },
             'channels_': {}

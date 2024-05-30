@@ -1,9 +1,9 @@
 import streamlit as st
 from modules.ConfigureSession import SessionConfig
-import config as cfg
+from config.meta import APP_NAME
 
 st.set_page_config(
-    page_title=f"{cfg.APP_NAME}: Download Results",
+    page_title=f"{APP_NAME}: Download Results",
     initial_sidebar_state='expanded',
     layout='wide'
 )

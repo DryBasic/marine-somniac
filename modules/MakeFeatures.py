@@ -3,7 +3,7 @@ import pandas as pd
 import modules.instructions as instruct
 from utils.EDF.EDF import EDFutils
 from modules.ConfigureSession import SessionConfig
-import config as cfg
+from config.channelcompute import FEATURE_OPTIONS
 
 
 class MakeFeatures(SessionConfig):
@@ -32,7 +32,7 @@ class MakeFeatures(SessionConfig):
         going into a feature computation. Sets defaults and gives argument
         descriptions by reading the method argspec and docstring.
         """
-        method = cfg.FEATURE_OPTIONS['all'][computation]
+        method = FEATURE_OPTIONS['all'][computation]
         method_name = method.__name__
         method_argspec = self.edf.get_method_args(ch_name, method_name)
         arg_names = method_argspec[0]
@@ -97,12 +97,12 @@ class MakeFeatures(SessionConfig):
             with st.expander(f"({ch_type}): {ch_name}", True):
                 compute[ch_name] = st.multiselect(
                     "Calculate features",
-                    options=cfg.FEATURE_OPTIONS[ch_type],
+                    options=FEATURE_OPTIONS[ch_type],
                     key=f"{ch_name}round1"
                 )
                 
                 for comp in compute[ch_name]:
-                    method = cfg.FEATURE_OPTIONS['all'][comp].__name__
+                    method = FEATURE_OPTIONS['all'][comp].__name__
                     self.feature_config[ch_name][method] = self.specify_computations(ch_name, comp)
                 
                 validity = self.validate_channel_configuration(self.feature_config[ch_name])

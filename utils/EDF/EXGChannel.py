@@ -9,6 +9,7 @@ from scipy.integrate import simpson
 from scipy.signal import welch
 from scipy.stats import iqr, skew, kurtosis
 from scipy.signal.windows import hann
+from .constants import EEG_BANDS
 
 
 class EXGChannel(Channel):
@@ -147,12 +148,24 @@ class EXGChannel(Channel):
         return (times, epochs)
     
     @staticmethod
-    def get_hjorth_params(epochs) -> dict:
+    def get_hjorth_params(epochs: np.array) -> dict:
         mobility, complexity = antropy.hjorth_params(epochs, axis=1)
         return {
             'hjorth_mobility': mobility,
             'hjorth_complexity': complexity
         }
+    
+    @staticmethod
+    def get_permutation_entropy(epochs: np.array) -> np.array:
+        return np.apply_along_axis(antropy.perm_entropy, axis=1, arr=epochs, normalize=True)
+    
+    def get_antropy_features(self, epochs: np.array) -> dict:
+        features = {
+            'permutation_entropy': self.get_permutation_entropy(epochs),
+            'higuchi_fractal_dimension': np.apply_along_axis(antropy.higuchi_fd, axis=1, arr=epochs),
+            'petrosian_fractal_dimension': antropy.petrosian_fd(epochs, axis=1)
+        }
+        return features
 
     @staticmethod
     def get_epoch_stats(epochs) -> dict:
@@ -165,8 +178,7 @@ class EXGChannel(Channel):
         }
         return stats
     
-    def get_welch_of_bands(self, epochs, window_sec:int=4,
-            bands:list[tuple[float, float, str]]=[(0.4, 1, "sdelta"), (1, 4, "fdelta"), (4, 8, "theta"), (8, 12, "alpha"), (12, 16, "sigma"), (16, 30, "beta")]) -> tuple[dict, np.array, np.array]:
+    def get_welch_of_bands(self, epochs, window_sec:int=4, bands:list[tuple[float, float, str]]=EEG_BANDS) -> tuple[dict, np.array, np.array]:
  
         window_length = self.freq*window_sec
         kwargs_welch = dict(
@@ -185,6 +197,13 @@ class EXGChannel(Channel):
         return (welches, freqs, power_spectral_density)
     
     @staticmethod
+    def get_total_power(powers):
+        total = np.zeros(len(powers[0]))
+        for power in powers:
+            total += power
+        return total
+
+    @staticmethod
     def get_power_ratios(welches: dict) -> dict:
         power_ratios = {}
         if 'sdelta' in welches and 'fdelta' in welches:
@@ -194,14 +213,14 @@ class EXGChannel(Channel):
         if 'alpha' in welches and 'theta' in welches:
             power_ratios["alpha/theta"] = welches["alpha"] / welches["theta"]
         return power_ratios
-    
+
     @staticmethod
     def get_absolute_power(freqs: np.array, freq_broad: tuple[float, float], power_spectral_density: np.array) -> dict:
         idx_broad = np.logical_and(freqs >= freq_broad[0], freqs <= freq_broad[1])
         dx = freqs[1] - freqs[0]
         return {"absolute_power": simpson(power_spectral_density[:, idx_broad], dx=dx)}
 
-    def get_features_yasa_eeg(self, freq_broad=(0.4, 30), epoch_window_sec=32, step_size=4, welch_window_sec:int=4) -> pd.DataFrame:
+    def get_epoch_derived_features(self, freq_broad=(0.4, 30), epoch_window_sec=32, step_size=4, welch_window_sec:int=4) -> pd.DataFrame:
         """
         Gets ECG features using similar code & syntax as YASA's feature generation, calculates deterministic features as well as spectral features
         freq_broad: broad range frequency of EEG (this is used for "absolute power" calculations, and as a divisor for calculating overall relative power)
@@ -214,35 +233,24 @@ class EXGChannel(Channel):
         times, epochs = self.get_epochs(freq_broad, epoch_window_sec, step_size)
 
         hjorth_parameters = self.get_hjorth_params(epochs)
+        antropy_features = self.get_antropy_features(epochs)
         stats = self.get_epoch_stats(epochs)
         welches, freqs, power_spectral_density = self.get_welch_of_bands(epochs, welch_window_sec)
         power_ratios = self.get_power_ratios(welches)
         absolute_power = self.get_absolute_power(freqs, freq_broad, power_spectral_density)
 
-        # Add relative power standard deviation
-        for j, (_, _, b) in enumerate(bands):
-            feat[b + '_std'] = [np.std(bp[j])] * len(bp[j])
-
-        # Add relative power bands
-        for j, (_, _, b) in enumerate(bands):
-            feat[b + '_relative'] = bp[j] / feat["abspow"]
-
-        # Calculate entropy and fractal dimension features
-        feat["perm"] = np.apply_along_axis(ant.perm_entropy, axis=1, arr=epochs, normalize=True)
-        feat["higuchi"] = np.apply_along_axis(ant.higuchi_fd, axis=1, arr=epochs)
-        feat["petrosian"] = ant.petrosian_fd(epochs, axis=1)
-
+        welch_stds = {f"{k}_std": [np.std(array)] * len(array) for k, array in welches}
+        relative_powers = {f"{k}_relative": array/absolute_power['absolute_power'] for k, array in welches}
 
         features = {
             'epoch': times
             **stats,
             **hjorth_parameters, 
+            **antropy_features,
             **welches,
+            **welch_stds,
+            **relative_powers,
             **power_ratios,
-            **absolute_power
+            **absolute_power,
         }
-        feature_df = pd.DataFrame(features)
-        for col in feature_df.columns:
-            if col != 'yasa_time':
-                feature_df[col] = pd.to_numeric(feature_df[col])
-        return feature_df
+        return pd.DataFrame(features)

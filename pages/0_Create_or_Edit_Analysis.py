@@ -8,10 +8,10 @@ import streamlit as st
 import modules.instructions as instruct
 from modules.ConfigureSession import SessionConfig
 from modules.ConfigureEDF import ConfigureEDF
-import config as cfg
+from config.meta import APP_NAME
 
 st.set_page_config(
-    page_title=f"{cfg.APP_NAME}: Configure",
+    page_title=f"{APP_NAME}: Configure",
     initial_sidebar_state='expanded',
     layout='wide'
 )

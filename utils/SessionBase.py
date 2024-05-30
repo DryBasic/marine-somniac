@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 import os
 import json
-import config as cfg
+from config.meta import ANALYSIS_STORE
 
 class SessionBase:
     @staticmethod
@@ -16,8 +16,8 @@ class SessionBase:
             if session_var not in st.session_state:
                 st.session_state[session_var] = None
 
-        if cfg.ANALYSIS_STORE not in os.listdir(os.getcwd()):
-            os.mkdir(cfg.ANALYSIS_STORE)
+        if ANALYSIS_STORE not in os.listdir(os.getcwd()):
+            os.mkdir(ANALYSIS_STORE)
 
     @staticmethod
     def validate_analysis_name(analysis: str) -> tuple[bool, str]:
@@ -34,11 +34,11 @@ class SessionBase:
 
     @staticmethod
     def get_analysis_files(analysis: str) -> str:
-        return os.listdir(f"{cfg.ANALYSIS_STORE}/{analysis}")
+        return os.listdir(f"{ANALYSIS_STORE}/{analysis}")
 
     @staticmethod
     def get_analysis_path(analysis: str) -> str:
-        return f"{cfg.ANALYSIS_STORE}/{analysis}"
+        return f"{ANALYSIS_STORE}/{analysis}"
 
     @staticmethod
     def get_existing_analyses() -> list:
@@ -57,12 +57,12 @@ class SessionBase:
         Search for and retrieve filepath of the EDF file for a given analysis.
         """
         if analysis in SessionBase.get_existing_analyses():
-            for file in os.listdir(f'{cfg.ANALYSIS_STORE}/{analysis}'):
+            for file in os.listdir(f'{ANALYSIS_STORE}/{analysis}'):
                 ext = file.split('.')[-1].lower()
                 if ext == 'edf' and not path:
                     return file
                 elif ext == 'edf' and path:
-                    return f"{cfg.ANALYSIS_STORE}/{analysis}/{file}"
+                    return f"{ANALYSIS_STORE}/{analysis}/{file}"
         return None
 
     @staticmethod
@@ -78,13 +78,13 @@ class SessionBase:
         st.file_uploader), read it into bytes, then write to disk under the configurable
         `ANALYSIS_STORE`/`ANALYSIS` path.
         """
-        session_dir = f'{cfg.ANALYSIS_STORE}/{parent_dir}'
-        if parent_dir not in os.listdir(cfg.ANALYSIS_STORE):
+        session_dir = f'{ANALYSIS_STORE}/{parent_dir}'
+        if parent_dir not in os.listdir(ANALYSIS_STORE):
             os.mkdir(session_dir)
 
         existing_file = SessionBase.get_edf_from_analysis(parent_dir)
         if existing_file is not None:
-            os.remove(f"{cfg.ANALYSIS_STORE}/{parent_dir}/{existing_file}")
+            os.remove(f"{ANALYSIS_STORE}/{parent_dir}/{existing_file}")
 
         file_bytes = file.read()
         file_write_path = f'{session_dir}/{file.name}'

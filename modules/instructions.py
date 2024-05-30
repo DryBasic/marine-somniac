@@ -1,5 +1,5 @@
 import streamlit as st
-import config as cfg
+from config.meta import APP_NAME, GET_STARTED, __PAPER_LINK
 
 PICK_ANALYSIS_HELP = 'You can create an analysis in the "Start New Analysis" page.'
 CHANNEL_TYPE_HELP = 'The channel type tells us what features should be built off a given channel.'
@@ -19,12 +19,12 @@ def get_started():
     st.markdown(
         "Please note, this tool only functions on data of the .edf format. "
         "We have found that most feature computations are more effective on electrophysiological data "
-        f"that has already undergone [some degree of processing (ICA)]({cfg.__PAPER_LINK}). "
+        f"that has already undergone [some degree of processing (ICA)]({__PAPER_LINK}). "
     )
     st.markdown("**Mapping your files**")
     st.markdown(f"""
         This application needs to know a few details about your data before we can get started
-        with your analysis. In the ***{cfg.GET_STARTED}*** page, you can specify things like which channels you'll
+        with your analysis. In the ***{GET_STARTED}*** page, you can specify things like which channels you'll
         be exploring and letting the application know what they are. Configurations need to be 
         specified for both your EDF data as well as any label data (if you will be training your
         own models).

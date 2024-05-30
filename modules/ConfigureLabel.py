@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import modules.instructions as instruct
 from utils.SessionBase import SessionBase
 
 
