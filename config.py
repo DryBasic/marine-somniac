@@ -49,7 +49,7 @@ BASE_FEATURE_SET = {
         ],
         "get_hjorth_mobility": [{}],
         "get_hjorth_complexity": [{}],
-        
+
     }
 }
 EXTENDED_FEATURE_SET = {
@@ -82,4 +82,14 @@ FEATURE_OPTIONS = {
     'ODBA': {**any_feats},
     'Gyroscope': {**any_feats},
     'Other': {**any_feats}
+}
+
+
+YASA_BANDS = {
+    "sdelta": (0.4, 1),
+    "fdelta": (1, 4),
+    "theta": (4, 8),
+    "alpha": (8, 12),
+    "sigma": (12, 16),
+    "beta": (16, 30),
 }

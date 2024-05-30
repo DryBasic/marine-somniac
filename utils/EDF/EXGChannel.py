@@ -1,4 +1,5 @@
 from .Channel import Channel
+import pandas as pd
 import numpy as np
 from typing import Self, Literal
 import mne
@@ -128,79 +129,79 @@ class EXGChannel(Channel):
             process=get_band_power_welch
         )
         return self._return(rolling_band_power, step_size=step_size)
-    
-    
-    def get_yasa_welch(self, freq_broad:tuple=(0.4, 30), freq_range:tuple[float, float]=(0.5, 4), ref_power:float=0.001, window_sec:int=4, epoch_window_sec:int=32, step_size:int=1,
-                        preset_band_range:Literal['alpha','beta','sigma','theta','sdelta','fdelta']=None) -> Self:
-        """
-        freq_broad: broad range frequency; used for "absolute power" calculations, data is pre-filtered to this
-        freq_range:
-        window_sec: 
-        epoch_window_sec: 
-        ref_power:
-        step_size:
-        preset_band_range: overrides freq_range if specified with defaults for 'alpha'|'beta'|'sigma'|'theta'|'sdelta'|'fdelta'
-        """
-        if preset_band_range is not None:
-            freq_range = {
-                "alpha": (8, 12),
-                "beta": (16, 30),
-                "sigma": (12, 16),
-                "theta": (4, 8),
-                "sdelta": (0.4, 1),
-                "fdelta": (1, 4)
-            }[preset_band_range]
 
-        dt_filt = mne.filter.filter_data(
-            self.signal, self.freq, 
-            l_freq=freq_broad[0], h_freq=freq_broad[1], verbose=False
-        )
-        times, epochs = yasa.sliding_window(dt_filt, sf=self.freq, window=epoch_window_sec, step=step_size)
-        times = times + epoch_window_sec // 2 
-        window_length = self.freq*window_sec
-        kwargs_welch = dict(
-            window='hann',
-            nperseg=window_length, # a little more than  4 minutes
-            noverlap=window_length//2,
-            scaling='density',
-            average='median'
-        )
-        freqs, psd = welch(epochs, self.freq, **kwargs_welch)
-        bp = yasa.bandpower_from_psd_ndarray(psd, freqs, bands=bands)
 
-    def get_hjorth_mobility(self):
-        _, epochs = self._get_epochs()
-        hmob, _ = antropy.hjorth_params(epochs, axis=1)
-        return hmob
 
-    def get_hjorth_complexity(self):
-        _, epochs = self._get_epochs()
-        _, hcomp = antropy.hjorth_params(epochs, axis=1)
-        return hcomp
-    
 
-    def get_():
-        feat = {
-            "std": np.std(epochs, ddof=1, axis=1),
-            "iqr": iqr(epochs, rng=(25, 75), axis=1),
-            "skew": skew(epochs, axis=1),
-            "kurt": kurtosis(epochs, axis=1),
-            "nzc": antropy.num_zerocross(epochs, axis=1),
-        }
-
-    def _get_epochs(self, freq_broad, window_sec, step_size, epoch_window_sec) -> tuple:
+    def get_epochs(self, freq_broad, epoch_window_sec, step_size) -> tuple:
         dt_filt = mne.filter.filter_data(
             self.signal, self.freq, 
             l_freq=freq_broad[0], h_freq=freq_broad[1], verbose=False
         )
         times, epochs = yasa.sliding_window(
             dt_filt, sf=self.freq, 
-            window=window_sec, step=step_size
+            window=epoch_window_sec, step=step_size
         )
-        times = times + epoch_window_sec // 2 # add window/2 to the times to make the epochs "centered" around the times
+        # add window/2 to the times to make the epochs "centered" around the times
+        times = times + epoch_window_sec // 2 
         return (times, epochs)
+    
+    @staticmethod
+    def get_hjorth_params(epochs) -> dict:
+        mobility, complexity = antropy.hjorth_params(epochs, axis=1)
+        return {
+            'hjorth_mobility': mobility,
+            'hjorth_complexity': complexity
+        }
 
-    def get_features_yasa_eeg(self, freq_broad=(0.4, 30), sfreq=500, welch_window_sec=4, epoch_window_sec=32, step_size=4, bands=None):
+    @staticmethod
+    def get_epoch_stats(epochs) -> dict:
+        stats = {
+            "std": np.std(epochs, ddof=1, axis=1),
+            "iqr": iqr(epochs, rng=(25, 75), axis=1),
+            "skew": skew(epochs, axis=1),
+            "kurt": kurtosis(epochs, axis=1),
+            "nzc": antropy.num_zerocross(epochs, axis=1),
+        }
+        return stats
+    
+    def get_welch_of_bands(self, epochs, window_sec:int=4,
+            bands:list[tuple[float, float, str]]=[(0.4, 1, "sdelta"), (1, 4, "fdelta"), (4, 8, "theta"), (8, 12, "alpha"), (12, 16, "sigma"), (16, 30, "beta")]) -> tuple[dict, np.array, np.array]:
+ 
+        window_length = self.freq*window_sec
+        kwargs_welch = dict(
+            window ='hann',
+            scaling='density',
+            average='median',
+            nperseg=window_length,
+            noverlap=window_length//2
+        )
+        freqs, power_spectral_density = welch(epochs, self.freq, **kwargs_welch)
+        bandpower = yasa.bandpower_from_psd_ndarray(power_spectral_density, freqs, bands=bands)
+
+        welches = {}
+        for i, (_, _, band_name) in enumerate(bands):
+            welches[band_name] = bandpower[i]
+        return (welches, freqs, power_spectral_density)
+    
+    @staticmethod
+    def get_power_ratios(welches: dict) -> dict:
+        power_ratios = {}
+        if 'sdelta' in welches and 'fdelta' in welches:
+            delta = welches["sdelta"] + welches["fdelta"]
+            for wave in [w for w in welches.keys() if w not in ('sdelta', 'fdelta')]:
+                power_ratios[f"delta/{wave}"] = delta / welches[wave]
+        if 'alpha' in welches and 'theta' in welches:
+            power_ratios["alpha/theta"] = welches["alpha"] / welches["theta"]
+        return power_ratios
+    
+    @staticmethod
+    def get_absolute_power(freqs: np.array, freq_broad: tuple[float, float], power_spectral_density: np.array) -> dict:
+        idx_broad = np.logical_and(freqs >= freq_broad[0], freqs <= freq_broad[1])
+        dx = freqs[1] - freqs[0]
+        return {"absolute_power": simpson(power_spectral_density[:, idx_broad], dx=dx)}
+
+    def get_features_yasa_eeg(self, freq_broad=(0.4, 30), epoch_window_sec=32, step_size=4, welch_window_sec:int=4) -> pd.DataFrame:
         """
         Gets ECG features using similar code & syntax as YASA's feature generation, calculates deterministic features as well as spectral features
         freq_broad: broad range frequency of EEG (this is used for "absolute power" calculations, and as a divisor for calculating overall relative power)
@@ -210,66 +211,13 @@ class EXGChannel(Channel):
         step_size: how big of a step size to use, in seconds
         bands: optional parameter to override the default bands used, for exmaple if you'd like more specific bands than just sdelta, fdelta, theta, alpha, etc
         """
-        if bands is None:
-            bands = [
-                (0.4, 1, "sdelta"),
-                (1, 4, "fdelta"),
-                (4, 8, "theta"),
-                (8, 12, "alpha"),
-                (12, 16, "sigma"),
-                (16, 30, "beta"),
-            ]
-        
-        #  Preprocessing
-        # - Filter the data
-        dt_filt = mne.filter.filter_data(
-            self.signal, sfreq, l_freq=freq_broad[0], h_freq=freq_broad[1], verbose=False
-        )
-        # - Extract epochs. Data is now of shape (n_epochs, n_samples).
-        times, epochs = yasa.sliding_window(dt_filt, sf=sfreq, window=epoch_window_sec, step=step_size)
-        times = times + epoch_window_sec // 2 # add window/2 to the times to make the epochs "centered" around the times
+        times, epochs = self.get_epochs(freq_broad, epoch_window_sec, step_size)
 
-        window_length = sfreq*welch_window_sec
-        kwargs_welch = dict(
-            window='hann',
-            nperseg=window_length, # a little more than  4 minutes
-            noverlap=window_length//2,
-            scaling='density',
-            average='median'
-        )
-
-        # Calculate standard descriptive statistics
-        hmob, hcomp = antropy.hjorth_params(epochs, axis=1)
-
-        feat = {
-            "std": np.std(epochs, ddof=1, axis=1),
-            "iqr": iqr(epochs, rng=(25, 75), axis=1),
-            "skew": skew(epochs, axis=1),
-            "kurt": kurtosis(epochs, axis=1),
-            "nzc": antropy.num_zerocross(epochs, axis=1),
-            "hmob": hmob,
-            "hcomp": hcomp,
-        }
-
-        # Calculate spectral power features (for EEG + EOG)
-        freqs, psd = sp_sig.welch(epochs, sfreq, **kwargs_welch)
-        bp = bandpower_from_psd_ndarray(psd, freqs, bands=bands)
-
-        for j, (_, _, b) in enumerate(bands):
-            feat[b] = bp[j]
-
-        # Add power ratios for EEG
-        if 'sdelta' in feat:
-            delta = feat["sdelta"] + feat["fdelta"]
-            feat["dt"] = delta / feat["theta"]
-            feat["ds"] = delta / feat["sigma"]
-            feat["db"] = delta / feat["beta"]
-            feat["at"] = feat["alpha"] / feat["theta"]
-        
-        # Add total power
-        idx_broad = np.logical_and(freqs >= freq_broad[0], freqs <= freq_broad[1])
-        dx = freqs[1] - freqs[0]
-        feat["abspow"] = simpson(psd[:, idx_broad], dx=dx)
+        hjorth_parameters = self.get_hjorth_params(epochs)
+        stats = self.get_epoch_stats(epochs)
+        welches, freqs, power_spectral_density = self.get_welch_of_bands(epochs, welch_window_sec)
+        power_ratios = self.get_power_ratios(welches)
+        absolute_power = self.get_absolute_power(freqs, freq_broad, power_spectral_density)
 
         # Add relative power standard deviation
         for j, (_, _, b) in enumerate(bands):
@@ -283,11 +231,18 @@ class EXGChannel(Channel):
         feat["perm"] = np.apply_along_axis(ant.perm_entropy, axis=1, arr=epochs, normalize=True)
         feat["higuchi"] = np.apply_along_axis(ant.higuchi_fd, axis=1, arr=epochs)
         feat["petrosian"] = ant.petrosian_fd(epochs, axis=1)
-        feat["epoch_index"] = times
 
-        # Convert to dataframe
-        feat = pd.DataFrame(feat)
-        for col in feat.columns:
+
+        features = {
+            'epoch': times
+            **stats,
+            **hjorth_parameters, 
+            **welches,
+            **power_ratios,
+            **absolute_power
+        }
+        feature_df = pd.DataFrame(features)
+        for col in feature_df.columns:
             if col != 'yasa_time':
-                feat[col] = pd.to_numeric(feat[col])
-        return feat
+                feature_df[col] = pd.to_numeric(feature_df[col])
+        return feature_df
