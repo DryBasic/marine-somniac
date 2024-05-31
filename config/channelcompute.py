@@ -12,7 +12,6 @@ CHANNEL_TYPES = [
     "Other"
 ]
 
-
 BASIC = {
     'Mean': Channel.get_rolling_mean,
     'Standard Deviation': Channel.get_rolling_std,
@@ -32,6 +31,7 @@ EPOCH_DERIVED = {
     'Skewness': Epoch.get_skew,
 }
 
+CUSTOM_ARGSPEC = ['get_welch']
 NOT_CONFIGURABLE = [
     'Hjorth Parameters',
     'Permutation Entropy',
@@ -44,7 +44,10 @@ NOT_CONFIGURABLE = [
     'Skewness'
 ]
 
-WELCH_DERIVED = {}
+WELCH_DERIVED = {
+    'Power Ratios': 'get_power_ratios',
+    'Absolute Power': 'get_absolute_power'
+}
 ECG_DERIVED = {'Heart Rate': ECGChannel.get_heart_rate}
 
 DERIVANDS = {

@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-from typing import Callable
+from typing import Callable, get_origin, get_args
+import inspect
 import modules.instructions as instruct
 from utils.EDF.EDF import EDFutils
 from modules.ConfigureSession import SessionConfig
@@ -17,6 +18,7 @@ class MakeFeatures(SessionConfig):
             config=self.get_edfconfig() 
         )
         self.feature_config = {}
+        self.validities = {}
         self.config_name = "MakeFeatures.json"
         self.feature_data_name = "features.csv"
         self.containers = {}
@@ -36,8 +38,11 @@ class MakeFeatures(SessionConfig):
         """
         st.subheader("Specify first round calculations")
         channel_methods = {}
-        for ch_name, ch_type in self.edf.channel_types.items():
-            with st.expander(f"({ch_type}): {ch_name}", True):
+        n_ch = len(self.edf.channels)
+        n = n_ch if n_ch < 3 else 3
+        c = st.columns(n)
+        for i, (ch_name, ch_type) in enumerate(self.edf.channel_types.items()):
+            with c[i%n].expander(f"({ch_type}): {ch_name}", True):
                 channel_methods[ch_name] = st.multiselect(
                     "Calculate features",
                     options=FEATURE_OPTIONS[ch_type],
@@ -50,22 +55,19 @@ class MakeFeatures(SessionConfig):
                     m_cfgs.append(method_config)
                 self.feature_config[ch_name] = {k: v for cfg in m_cfgs for k, v in cfg.items()}
 
-                validity = self.validate_channel_configuration(self.feature_config[ch_name])
+                validity = self.validate_channel_configuration(ch_name, self.feature_config[ch_name])
                 if not validity[0]:
                     st.error(validity[1])
                 else:
                     st.success(validity[1])
                 
-    def specify_method_instances(self, ch_name:str, label:str, method:Callable, previous_derivand:list=None, previous_config:list=None) -> dict:
+    def specify_method_instances(self, ch_name:str, label:str, method:Callable, previous_derivand:list=None) -> dict:
+        method_config = []
         method_name = method.__name__
         og_label = label
 
         if previous_derivand is None:
             previous_derivand = []
-        if previous_config is None:
-            method_config = []
-        else:
-            method_config = previous_config
 
         # Is the method configurable?
         if label in NOT_CONFIGURABLE:
@@ -101,21 +103,23 @@ class MakeFeatures(SessionConfig):
                         options=DERIVANDS[og_label],
                         key=f"{ch_name}{label}{i}"
                     )
+                    deriv_config = {}
                     for deriv in derivatives:
                         current_derivand = [f"{label} {i+1}"]
                         next_method = LABEL_TO_METHOD[deriv]
                         # recursive call
-                        deriv_config = {'derived': self.specify_method_instances(
+                        
+                        deriv_config = {**self.specify_method_instances(
                             ch_name=ch_name,
                             label=deriv,
                             method=next_method,
                             previous_derivand=previous_derivand+current_derivand,
-                            previous_config=method_config
-                        )}
+                        ), **deriv_config}
 
+                derived = {'derived': deriv_config} if deriv_config else {}
                 method_config.append({
                     'args': method_args,
-                    **deriv_config
+                    **derived
                 })
         return {method_name: method_config}
     
@@ -126,40 +130,132 @@ class MakeFeatures(SessionConfig):
         descriptions by reading the method argspec and docstring.
         """
         method_name = method.__name__
-        method_argspec = self.edf.get_method_args(ch_name, method_name)
-        arg_names = method_argspec[0]
-        arg_defaults = method_argspec[1]
-        arg_descs = [self.extract_arg_desc_from_docstring(method.__doc__, arg)
-                        for arg in arg_names]
+        arg_info = self.get_method_args(ch_name, method_name, forspec=True)  
 
         arg_vals = {}
+        unpacked_args = {}
+        if not method_name in CUSTOM_ARGSPEC:
+            c = container.columns(len(arg_info))
+            for i, (arg_name, info) in enumerate(arg_info.items()):
+                if not 'tuple_flag' in info:
+                    arg_vals[arg_name] = c[i].text_input(
+                        arg_name,
+                        value=info['default'],
+                        help=info['help'],
+                        key=f"{key_str}{ch_name}{method_name}{arg_name}"
+                    )
+                else:
+                    name, pos = info['tuple_flag']
+                    if name not in unpacked_args:
+                        unpacked_args[name] = [None, None]
+                    unpacked_args[name][pos] = c[i].text_input(
+                        arg_name,
+                        value=info['default'],
+                        help=info['help'],
+                        key=f"{key_str}{ch_name}{method_name}{arg_name}"
+                    )
+            arg_vals = {
+                **unpacked_args,
+                **arg_vals
+            }
+        else:
+            if method_name == 'get_welch':
+                wkey = key_str+ch_name+method_name
+                arg_vals = self.specify_welch_args(container, arg_info, wkey)
+            else:
+                raise Exception("custom method flagged, but no process specified")
+
+        return arg_vals
+    
+    def specify_welch_args(self, container, arg_info, key) -> dict:
+        arg_vals = {}
         with container:
-            c = st.columns(len(arg_names))
-            for i, arg in enumerate(arg_names):
-                arg_vals[arg] = c[i].text_input(
-                    arg,
-                    value=arg_defaults[i],
-                    help=arg_descs[i],
-                    key=f"{key_str}{ch_name}{method_name}{arg}"
+            arg_vals['window_sec'] = st.number_input(
+                'window_sec',
+                value=arg_info['window_sec']['default'],
+                help=arg_info['window_sec']['help'],
+                key=key+'window_sec'
+            )
+
+            bands = []
+            for band in arg_info['bands']['default']:
+                c = st.columns(3)
+                name = c[0].text_input(
+                    'band name',
+                    value=band[2],
+                    help="",
+                    key=key+'band_name'+str(band)
                 )
+                if name: 
+                    low = c[1].text_input(
+                        'range low end',
+                        value=band[0],
+                        help="",
+                        key=key+'low'+str(band)
+                    )
+                    high = c[2].text_input(
+                        'range high end',
+                        value=band[1],
+                        help="",
+                        key=key+'high'+str(band)
+                    )
+                bands.append((low, high, name))
+            arg_vals['bands'] = [i for i in bands if i[2]]
         return arg_vals
 
-    def validate_channel_configuration(self, channel_config) -> tuple[bool, str]:
+    def validate_channel_configuration(self, ch_name, channel_config) -> tuple[bool, str]:
         if not channel_config:
             return (False, "No features specified. Either remove this channel from the main "
                     "configuration, or specify features to compute from this channel.")
         
-        return (True, "Configuration valid")
+        try:
+            typed_config = self.iterate_type_coercion(ch_name, channel_config)
+            self.feature_config[ch_name] = typed_config
+            self.validities[ch_name] = True
+            return (True, "Configuration valid")
+        except Exception as exc:
+            self.validities[ch_name] = False
+            return (False, str(exc))
 
-    def validate_configuration(self) -> tuple[bool, str]:
-        validities = []
-        for channel_config in self.feature_config.values():
-            validities.append(self.validate_channel_configuration(channel_config)[0])
-
-        if not all(validities):
+    def validate_all_configurations(self) -> tuple[bool, str]:
+        if not all(self.validities.values()):
             return (False, "One or more channels have invalid configurations.")
         return (True, "All configurations valid. "
                 "Saving this configuration will overwrite the previous.")
+
+    def iterate_type_coercion(self, ch_name: str, tree: dict) -> tuple|dict:
+        coerced = {}
+        for method_name, instances in tree.items():
+            coerced[method_name] = []
+            arg_info = self.get_method_args(ch_name, method_name)
+            for i, instance in enumerate(instances):
+                inst_config = {'args': {}}
+                for arg, value in instance['args'].items():
+                    arg_type = arg_info[arg]['type'] 
+                    typed_val = self.coerce_type(arg_type, value)
+                    inst_config['args'][arg] = typed_val
+                if instance.get('derived'):
+                    dtree = tree[method_name][i]['derived']
+                    inst_config['derived'] = self.iterate_type_coercion(ch_name, dtree)
+                coerced[method_name].append(inst_config)
+        return coerced
+
+    @staticmethod
+    def coerce_type(supertype, value):
+        if supertype is not None:
+            if get_args(supertype) == ():
+                try:
+                    return supertype(value)
+                except:
+                    raise TypeError(f"Could not coerce `{value}` into {supertype}")
+            else:
+                collection = []
+                subtypes = get_args(supertype)
+                for i, v in enumerate(value):
+                    collection.append(MakeFeatures.coerce_type(
+                        subtypes[i], v
+                    ))
+                return get_origin(supertype)([collection])
     
     # TODO
     def retrieve_configuration(self) -> dict:
@@ -193,6 +289,45 @@ class MakeFeatures(SessionConfig):
         label = f": ({remove_chain(str(argdict), remove)})"
         return label
 
+    def get_method_args(self, ch_name, method, forspec=False) -> dict:
+        ch_type = self.edf.channel_types[ch_name]
+        channel_obj = self.edf._route_object[ch_type]
+        argspec = inspect.getfullargspec(
+            getattr(channel_obj, method)
+        )
+        args = [arg for arg in argspec.args if arg != 'self']
+        arg_defaults = argspec.defaults
+        arg_descs = [self.extract_arg_desc_from_docstring(method.__doc__, arg) for arg in args]
+        arg_types = [argspec.annotations.get(arg) for arg in args]
+
+        arg_info = {}
+        for i, arg in enumerate(args):
+            is_special_tuple = get_origin(arg_types[i]) is tuple and \
+                                len(get_args(arg_types[i])) == 2 and \
+                                isinstance(arg_defaults[i], tuple)
+            if forspec and is_special_tuple:
+                ltype, htype = get_args(arg_types[i])
+                ldef, hdef = arg_defaults[i]
+                arg_info[f'low_{arg}'] = {
+                    'type': ltype,
+                    'default': ldef,
+                    'help': arg_descs[i],
+                    'tuple_flag': (arg, 0)
+                }
+                arg_info[f'high_{arg}'] = {
+                    'type': htype,
+                    'default': hdef,
+                    'help': arg_descs[i],
+                    'tuple_flag': (arg, 1)
+                }
+            else:
+                arg_info[arg] =  {
+                    'type': arg_types[i],
+                    'default': arg_defaults[i],
+                    'help': arg_descs[i]
+                }
+        return arg_info
+    
     @staticmethod
     def extract_arg_desc_from_docstring(doc_str: str, arg: str) -> str:
         """
@@ -206,4 +341,8 @@ class MakeFeatures(SessionConfig):
                 return desc
         else:
             return ''
-    
+        
+    def get_channel_methods(self, ch_name) -> list:
+        ch_type = self.edf.channel_types[ch_name]
+        channel_obj = self.edf._route_object[ch_type]
+        return [i for i in dir(channel_obj) if 'get' in i and '__' not in i]

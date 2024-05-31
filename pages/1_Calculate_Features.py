@@ -20,7 +20,7 @@ if not validity[0]:
 else:
     page = MakeFeatures(session.analysis)
     page.configure_output_freq()
-    top = st.container()
+
 
     st.radio(
         "Choose a starting point",
@@ -32,15 +32,16 @@ else:
     with conf:
         page.specify_methods_per_channel()
 
-        valid = page.validate_configuration()
+        valid = page.validate_all_configurations()
         if not valid[0]:
             st.error(valid[1])
         else:
             st.success(valid[1])
 
+        view_config = st.container()
         if st.button("Save Configuration", disabled=not valid[0], use_container_width=True):
             page.save_configuration()
 
 
-    # with top.expander('View Current Configuration'):
-    #     st.write(page.feature_config)
+    with view_config.expander('View Current Configuration'):
+        st.write(page.feature_config)

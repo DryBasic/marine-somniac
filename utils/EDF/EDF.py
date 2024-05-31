@@ -110,18 +110,3 @@ class EDFutils:
         channels: channels to export, default exports all
         """
         pass
-
-    def get_channel_methods(self, ch_name) -> list:
-        ch_type = self.channel_types[ch_name]
-        channel_obj = self._route_object[ch_type]
-        return [i for i in dir(channel_obj) if 'get' in i and '__' not in i]
-
-    def get_method_args(self, ch_name, method) -> tuple[list, list]:
-        ch_type = self.channel_types[ch_name]
-        channel_obj = self._route_object[ch_type]
-        argspec = inspect.getfullargspec(
-            getattr(channel_obj, method)
-        )
-        args = [arg for arg in argspec.args if arg != 'self']
-        arg_defaults = argspec.defaults
-        return (args, arg_defaults)
