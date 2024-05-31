@@ -2,9 +2,11 @@ import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 import os
 import json
+from utils.StringUtils import StringUtils
+from utils.GeneralUtils import GeneralUtils
 from config.meta import ANALYSIS_STORE
 
-class SessionBase:
+class SessionBase(StringUtils, GeneralUtils):
     @staticmethod
     def initialize_session() -> None:
         """
@@ -66,12 +68,6 @@ class SessionBase:
         return None
 
     @staticmethod
-    def read_json(path) -> dict:
-        with open(path) as f:
-            json_dict = json.load(f)
-        return json_dict
-
-    @staticmethod
     def write_edf(file: UploadedFile, parent_dir) -> None:
         """
         Take the EDF file in the form streamlit's UploadedFile object (return type of
@@ -99,4 +95,3 @@ class SessionBase:
         path = f"{SessionBase.get_analysis_path(analysis)}/{name}"
         with open(path, "w") as f:
             json.dump(config, f, default=str, indent=4)
-            

@@ -176,7 +176,6 @@ class MakeFeatures(SessionConfig):
                 help=arg_info['window_sec']['help'],
                 key=key+'window_sec'
             )
-
             bands = []
             for band in arg_info['bands']['default']:
                 c = st.columns(3)
@@ -208,14 +207,14 @@ class MakeFeatures(SessionConfig):
             return (False, "No features specified. Either remove this channel from the main "
                     "configuration, or specify features to compute from this channel.")
         
-        try:
-            typed_config = self.iterate_type_coercion(ch_name, channel_config)
-            self.feature_config[ch_name] = typed_config
-            self.validities[ch_name] = True
-            return (True, "Configuration valid")
-        except Exception as exc:
-            self.validities[ch_name] = False
-            return (False, str(exc))
+        # try:
+        typed_config = self.iterate_type_coercion(ch_name, channel_config)
+        self.feature_config[ch_name] = typed_config
+        self.validities[ch_name] = True
+        return (True, "Configuration valid")
+        # except Exception as exc:
+        #     self.validities[ch_name] = False
+        #     return (False, str(exc))
 
     def validate_all_configurations(self) -> tuple[bool, str]:
         if not all(self.validities.values()):
@@ -224,38 +223,23 @@ class MakeFeatures(SessionConfig):
                 "Saving this configuration will overwrite the previous.")
 
     def iterate_type_coercion(self, ch_name: str, tree: dict) -> tuple|dict:
-        coerced = {}
+        converted = {}
         for method_name, instances in tree.items():
-            coerced[method_name] = []
+            converted[method_name] = []
             arg_info = self.get_method_args(ch_name, method_name)
             for i, instance in enumerate(instances):
                 inst_config = {'args': {}}
-                for arg, value in instance['args'].items():
-                    arg_type = arg_info[arg]['type'] 
-                    typed_val = self.coerce_type(arg_type, value)
-                    inst_config['args'][arg] = typed_val
-                if instance.get('derived'):
-                    dtree = tree[method_name][i]['derived']
-                    inst_config['derived'] = self.iterate_type_coercion(ch_name, dtree)
-                coerced[method_name].append(inst_config)
-        return coerced
-
-    @staticmethod
-    def coerce_type(supertype, value):
-        if supertype is not None:
-            if get_args(supertype) == ():
-                try:
-                    return supertype(value)
-                except:
-                    raise TypeError(f"Could not coerce `{value}` into {supertype}")
-            else:
-                collection = []
-                subtypes = get_args(supertype)
-                for i, v in enumerate(value):
-                    collection.append(MakeFeatures.coerce_type(
-                        subtypes[i], v
-                    ))
-                return get_origin(supertype)([collection])
+                # args = None when non-configurable method like most Epoch-derived
+                if instance['args'] is not None:
+                    for arg, value in instance['args'].items():
+                        arg_type = arg_info[arg]['type']
+                        typed_val = self.convert_type(arg_type, value)
+                        inst_config['args'][arg] = typed_val
+                    if instance.get('derived'):
+                        dtree = tree[method_name][i]['derived']
+                        inst_config['derived'] = self.iterate_type_coercion(ch_name, dtree)
+                    converted[method_name].append(inst_config)
+        return converted
     
     # TODO
     def retrieve_configuration(self) -> dict:
@@ -276,19 +260,6 @@ class MakeFeatures(SessionConfig):
             # df.to_csv(f"{}/{self.feature_data_name}")
         st.toast("Features computed and saved to analysis.")
 
-    @staticmethod
-    def format_method_arg_labels(argdict: dict) -> str:
-
-        def remove_chain(base_str: str, replacements: list):
-            removed = base_str
-            for r in replacements:
-                removed = removed.replace(r, '') 
-            return removed
-        
-        remove = ["'", '"', '{', '}']
-        label = f": ({remove_chain(str(argdict), remove)})"
-        return label
-
     def get_method_args(self, ch_name, method, forspec=False) -> dict:
         ch_type = self.edf.channel_types[ch_name]
         channel_obj = self.edf._route_object[ch_type]
@@ -297,6 +268,8 @@ class MakeFeatures(SessionConfig):
         )
         args = [arg for arg in argspec.args if arg != 'self']
         arg_defaults = argspec.defaults
+        if arg_defaults is None:
+            arg_defaults = [None]*len(args)
         arg_descs = [self.extract_arg_desc_from_docstring(method.__doc__, arg) for arg in args]
         arg_types = [argspec.annotations.get(arg) for arg in args]
 
@@ -327,22 +300,3 @@ class MakeFeatures(SessionConfig):
                     'help': arg_descs[i]
                 }
         return arg_info
-    
-    @staticmethod
-    def extract_arg_desc_from_docstring(doc_str: str, arg: str) -> str:
-        """
-        The docstrings of EDF.Channel, .EXGChannel, and .ECGChannel follow a specific
-        format such that the description of an argument can be extracted with the following
-        string operation.
-        """
-        if doc_str is not None:
-            if arg in doc_str:
-                desc = doc_str.split(f"{arg}:")[1].split('\n')[0]
-                return desc
-        else:
-            return ''
-        
-    def get_channel_methods(self, ch_name) -> list:
-        ch_type = self.edf.channel_types[ch_name]
-        channel_obj = self.edf._route_object[ch_type]
-        return [i for i in dir(channel_obj) if 'get' in i and '__' not in i]

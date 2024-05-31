@@ -33,6 +33,9 @@ class ECGChannel(EXGChannel):
         hr_data = hr_data.to_numpy()
         return self._return(hr_data, step_size=1)
 
+    # override default bands
+    def get_welch(self, epochs=None, window_sec:int=4, bands:list[tuple[float, float, str]]=HR_BANDS) -> tuple[dict, np.array, np.array]:
+        return EXGChannel.get_welch(epochs, window_sec, bands)
 
     def get_hr_epoch_bundle(self, heart_rate_data, freq_broad=(0,1), sfreq=500, epoch_window_sec=512, welch_window_sec=512, step_size=32) -> pd.DataFrame:
         """
