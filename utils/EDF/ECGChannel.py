@@ -35,6 +35,10 @@ class ECGChannel(EXGChannel):
 
     # override default bands
     def get_welch(self, epochs=None, window_sec:int=4, bands:list[tuple[float, float, str]]=HR_BANDS) -> tuple[dict, np.array, np.array]:
+        """
+        window_sec: size of the rolling window to use in seconds
+        bands: band ranges and their name from which to calculate the spectral density
+        """
         return EXGChannel.get_welch(epochs, window_sec, bands)
 
     def get_hr_epoch_bundle(self, heart_rate_data, freq_broad=(0,1), sfreq=500, epoch_window_sec=512, welch_window_sec=512, step_size=32) -> pd.DataFrame:

@@ -30,7 +30,15 @@ class MakeFeatures(SessionConfig):
             help=instruct.FEATURE_FREQUENCY_HELP
         )
 
-    def specify_methods_per_channel(self) -> None:
+    # TODO
+    def get_widget_defaults(self, preload_type):
+        match preload_type:
+
+            case 'From scratch':
+                pass
+        return 
+
+    def specify_methods_per_channel(self, preload) -> None:
         """
         Create expanders for each specified channel and let user specify which
         features should be computed from it. Modifies self.feature_config to contain
@@ -182,20 +190,22 @@ class MakeFeatures(SessionConfig):
                 name = c[0].text_input(
                     'band name',
                     value=band[2],
-                    help="",
+                    help="Name of the band range. If you are using the pre-populated defaults, "
+                         "do not change this as it influences downstream calculations. "
+                         "Erasing the name removes this calculation.",
                     key=key+'band_name'+str(band)
                 )
                 if name: 
                     low = c[1].text_input(
                         'range low end',
                         value=band[0],
-                        help="",
+                        help="Low end of frequency range for which to calculate power",
                         key=key+'low'+str(band)
                     )
                     high = c[2].text_input(
                         'range high end',
                         value=band[1],
-                        help="",
+                        help="High end of frequency range for which to calculate power",
                         key=key+'high'+str(band)
                     )
                 bands.append((low, high, name))
@@ -207,16 +217,18 @@ class MakeFeatures(SessionConfig):
             return (False, "No features specified. Either remove this channel from the main "
                     "configuration, or specify features to compute from this channel.")
         
-        # try:
-        typed_config = self.iterate_type_coercion(ch_name, channel_config)
-        self.feature_config[ch_name] = typed_config
-        self.validities[ch_name] = True
-        return (True, "Configuration valid")
-        # except Exception as exc:
-        #     self.validities[ch_name] = False
-        #     return (False, str(exc))
+        try:
+            typed_config = self.iterate_type_coercion(ch_name, channel_config)
+            self.feature_config[ch_name] = typed_config
+            self.validities[ch_name] = True
+            return (True, "Configuration valid")
+        except Exception as exc:
+            self.validities[ch_name] = False
+            return (False, str(exc))
 
     def validate_all_configurations(self) -> tuple[bool, str]:
+        if not len(self.validities) == len(self.edf.channels):
+            return (False, "Please specify configurations for all channels")
         if not all(self.validities.values()):
             return (False, "One or more channels have invalid configurations.")
         return (True, "All configurations valid. "
@@ -243,7 +255,8 @@ class MakeFeatures(SessionConfig):
     
     # TODO
     def retrieve_configuration(self) -> dict:
-        pass
+        cfg_path = self.get_file_from_analysis(self.config_name)
+        return self.read_json(cfg_path)
 
     def save_configuration(self) -> None:
         self.write_configuration(
@@ -260,12 +273,12 @@ class MakeFeatures(SessionConfig):
             # df.to_csv(f"{}/{self.feature_data_name}")
         st.toast("Features computed and saved to analysis.")
 
-    def get_method_args(self, ch_name, method, forspec=False) -> dict:
+    def get_method_args(self, ch_name, method_name, forspec=False) -> dict:
         ch_type = self.edf.channel_types[ch_name]
         channel_obj = self.edf._route_object[ch_type]
-        argspec = inspect.getfullargspec(
-            getattr(channel_obj, method)
-        )
+        method = getattr(channel_obj, method_name)
+        argspec = inspect.getfullargspec(method)
+
         args = [arg for arg in argspec.args if arg != 'self']
         arg_defaults = argspec.defaults
         if arg_defaults is None:

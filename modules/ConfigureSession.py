@@ -52,3 +52,6 @@ class SessionConfig(SessionBase):
         else:
             st.image(f'assets/logo_{theme}.jpeg')
 
+    # TODO
+    def check_model_eligibility():
+        pass

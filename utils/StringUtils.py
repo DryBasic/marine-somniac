@@ -1,6 +1,6 @@
 class StringUtils:
     @staticmethod
-    def extract_arg_desc_from_docstring(doc_str: str, arg: str) -> str:
+    def extract_arg_desc_from_docstring(doc_str: str, arg: str) -> str|None:
         """
         The docstrings of EDF.Channel, .EXGChannel, and .ECGChannel follow a specific
         format such that the description of an argument can be extracted with the following
@@ -11,7 +11,7 @@ class StringUtils:
                 desc = doc_str.split(f"{arg}:")[1].split('\n')[0]
                 return desc
         else:
-            return ''
+            return None
         
     def get_channel_methods(self, ch_name) -> list:
         ch_type = self.edf.channel_types[ch_name]

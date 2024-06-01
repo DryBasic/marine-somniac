@@ -11,6 +11,12 @@ st.set_page_config(
 )
 session = SessionConfig()
 
+
+@st.experimental_dialog(f'Feature Configuration for "{session.analysis}"')
+def show_config(config):
+    st.write(config)
+
+
 st.title('Compute Features')
 instruct.feature_generation()
 
@@ -21,16 +27,16 @@ else:
     page = MakeFeatures(session.analysis)
     page.configure_output_freq()
 
-
-    st.radio(
+    starting_point = st.radio(
         "Choose a starting point",
-        options=["Custom", 'Base Model', 'Extended Model', 'Refined Model'],
+        options=["Saved configuration", "From scratch", "All possible", 'Base Model', 'Extended Model', 'Refined Model'],
         horizontal=True
     )
     conf, build = st.tabs(['Configure', 'Build & Explore Features'])
 
     with conf:
-        page.specify_methods_per_channel()
+        view_config = st.container()
+        page.specify_methods_per_channel(starting_point)
 
         valid = page.validate_all_configurations()
         if not valid[0]:
@@ -38,10 +44,12 @@ else:
         else:
             st.success(valid[1])
 
-        view_config = st.container()
         if st.button("Save Configuration", disabled=not valid[0], use_container_width=True):
             page.save_configuration()
 
+    with view_config:
+        if st.button("View current configuration", use_container_width=True):
+            show_config(page.feature_config)
 
-    with view_config.expander('View Current Configuration'):
-        st.write(page.feature_config)
+
+
