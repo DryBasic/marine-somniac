@@ -2,12 +2,12 @@ import numpy as np
 import antropy
 import yasa
 from scipy.stats import iqr, skew, kurtosis
-from scipy.integrate import simpson
 from scipy.signal import welch
+from utils.EDF.WelchDerived import WelchDerived
 from .constants import EEG_BANDS
 
 
-class Epoch:
+class EpochDerived(WelchDerived):
     @staticmethod
     def get_hjorth_params(epochs: np.array) -> dict:
         mobility, complexity = antropy.hjorth_params(epochs, axis=1)
@@ -48,30 +48,6 @@ class Epoch:
     def get_zero_crossings(epochs: np.array) -> np.array: 
         return antropy.num_zerocross(epochs, axis=1)
     
-    @staticmethod
-    def get_total_power(powers):
-        total = np.zeros(len(powers[0]))
-        for power in powers:
-            total += power
-        return total
-
-    @staticmethod
-    def get_power_ratios(welches: dict) -> dict:
-        power_ratios = {}
-        if 'sdelta' in welches and 'fdelta' in welches:
-            delta = welches["sdelta"] + welches["fdelta"]
-            for wave in [w for w in welches.keys() if w not in ('sdelta', 'fdelta')]:
-                power_ratios[f"delta/{wave}"] = delta / welches[wave]
-        if 'alpha' in welches and 'theta' in welches:
-            power_ratios["alpha/theta"] = welches["alpha"] / welches["theta"]
-        return power_ratios
-
-    @staticmethod
-    def get_absolute_power(freqs: np.array, freq_broad: tuple[float, float], power_spectral_density: np.array) -> dict:
-        idx_broad = np.logical_and(freqs >= freq_broad[0], freqs <= freq_broad[1])
-        dx = freqs[1] - freqs[0]
-        return {"absolute_power": simpson(power_spectral_density[:, idx_broad], dx=dx)}
-    
     def get_welch(self, epochs=None, window_sec:int=4, bands:list[tuple[float, float, str]]=EEG_BANDS) -> tuple[dict, np.array, np.array]:
         """
         window_sec: size of the rolling window to use in seconds
@@ -92,3 +68,6 @@ class Epoch:
         for i, (_, _, band_name) in enumerate(bands):
             welches[band_name] = bandpower[i]
         return (welches, freqs, power_spectral_density)
+    
+
+        

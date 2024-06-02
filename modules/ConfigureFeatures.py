@@ -8,7 +8,7 @@ from modules.ConfigureSession import SessionConfig
 from config.channelcompute import *
 
 
-class MakeFeatures(SessionConfig):
+class ConfigureFeatures(SessionConfig):
     def __init__(self, analysis) -> None:
         self.analysis = analysis
         self.output_freq = None
@@ -54,6 +54,7 @@ class MakeFeatures(SessionConfig):
                 channel_methods[ch_name] = st.multiselect(
                     "Calculate features",
                     options=FEATURE_OPTIONS[ch_type],
+                    default=FEATURE_OPTIONS[ch_type],
                     key=f"{ch_name}-pick-derivatives"
                 )
                 m_cfgs = []
@@ -109,6 +110,7 @@ class MakeFeatures(SessionConfig):
                     derivatives = deriv_menu.multiselect(
                         "Calculate features",
                         options=DERIVANDS[og_label],
+                        default=DERIVANDS[og_label],
                         key=f"{ch_name}{label}{i}"
                     )
                     deriv_config = {}

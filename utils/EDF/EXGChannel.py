@@ -1,12 +1,12 @@
 from .Channel import Channel
-from .Epoch import Epoch
+from .EpochDerived import EpochDerived
 import pandas as pd
 import numpy as np
 import mne
 import yasa
 
 
-class EXGChannel(Channel, Epoch):
+class EXGChannel(Channel, EpochDerived):
     def get_epochs(self, freq_broad:tuple[float,float]=(0.4, 30), window_sec:int=32, step_size:int=4) -> tuple:
         """
         freq_broad: broad range frequency of EEG (this is used for "absolute power" calculations, and as a divisor for calculating overall relative power)

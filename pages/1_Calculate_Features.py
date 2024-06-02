@@ -1,5 +1,6 @@
 import streamlit as st
-from modules.MakeFeatures import MakeFeatures
+from modules.ConfigureFeatures import ConfigureFeatures
+from modules.BuildFeatures import BuildFeatures
 from modules.ConfigureSession import SessionConfig
 import modules.instructions as instruct
 from config.meta import APP_NAME
@@ -12,7 +13,7 @@ st.set_page_config(
 session = SessionConfig()
 
 
-@st.experimental_dialog(f'Feature Configuration for "{session.analysis}"')
+@st.experimental_dialog(f'Feature Configuration for "{session.analysis}"', width='large')
 def show_config(config):
     st.write(config)
 
@@ -24,7 +25,7 @@ validity = session.validate_analysis(modes=['edfconfig'])
 if not validity[0]:
     st.error(validity[1])
 else:
-    page = MakeFeatures(session.analysis)
+    page = ConfigureFeatures(session.analysis)
     page.configure_output_freq()
 
     starting_point = st.radio(
@@ -32,10 +33,10 @@ else:
         options=["Saved configuration", "From scratch", "All possible", 'Base Model', 'Extended Model', 'Refined Model'],
         horizontal=True
     )
+    view_config = st.container()
     conf, build = st.tabs(['Configure', 'Build & Explore Features'])
 
     with conf:
-        view_config = st.container()
         page.specify_methods_per_channel(starting_point)
 
         valid = page.validate_all_configurations()
@@ -50,6 +51,10 @@ else:
     with view_config:
         if st.button("View current configuration", use_container_width=True):
             show_config(page.feature_config)
+
+    with build:
+        bld = BuildFeatures(build_config=page.retrieve_configuration())
+        st.write(bld.flatten_configuration())
 
 
 

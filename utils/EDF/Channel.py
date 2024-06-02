@@ -173,6 +173,10 @@ class Channel:
             data=np.array([self.time, self.signal]).T,
             columns=['time', self.name]
         )
+    
+    def run_method(self, method_name, args: dict):
+        func = getattr(self, method_name) 
+        func(**args)
 
     def visualize(self):
         """

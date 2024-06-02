@@ -1,7 +1,8 @@
 from utils.EDF.EDF import Channel
 from utils.EDF.EDF import EXGChannel
 from utils.EDF.EDF import ECGChannel
-from utils.EDF.Epoch import Epoch
+from utils.EDF.EpochDerived import EpochDerived
+from utils.EDF.WelchDerived import WelchDerived
 
 CHANNEL_TYPES = [
     "EEG",
@@ -19,19 +20,25 @@ BASIC = {
 EXG_DERIVED ={'Epoch': EXGChannel.get_epochs}
 HEARTRATE_DERIVED = {'Epoch': EXGChannel.get_epochs, **BASIC}
 EPOCH_DERIVED = {
-    'Hjorth Parameters': Epoch.get_hjorth_params,
-    'Permutation Entropy': Epoch.get_permutation_entropy,
-    'Higuchi Fractal Dimension': Epoch.get_higuchi,
-    'Petrosian Fractal Dimension': Epoch.get_petrosian,
-    'Zero Crossings': Epoch.get_zero_crossings,
-    "Welch's Power Spectral Density": Epoch.get_welch,
-    'Standard Deviation_': Epoch.get_std,
-    'Interquartile Range': Epoch.get_interquartile_range,
-    'Kurtosis': Epoch.get_kurtosis,
-    'Skewness': Epoch.get_skew,
+    'Hjorth Parameters': EpochDerived.get_hjorth_params,
+    'Permutation Entropy': EpochDerived.get_permutation_entropy,
+    'Higuchi Fractal Dimension': EpochDerived.get_higuchi,
+    'Petrosian Fractal Dimension': EpochDerived.get_petrosian,
+    'Zero Crossings': EpochDerived.get_zero_crossings,
+    "Welch's Power Spectral Density": EpochDerived.get_welch,
+    'Standard Deviation_': EpochDerived.get_std,
+    'Interquartile Range': EpochDerived.get_interquartile_range,
+    'Kurtosis': EpochDerived.get_kurtosis,
+    'Skewness': EpochDerived.get_skew,
 }
-
-CUSTOM_ARGSPEC = ['get_welch']
+WELCH_DERIVED = {
+    'Power Ratios': WelchDerived.get_power_ratios,
+    'Absolute Power': WelchDerived.get_absolute_power,
+    'Power Standard Deviation': WelchDerived.get_power_std,
+    'Relative Powers': WelchDerived.get_relative_powers,
+    'Total Power': WelchDerived.get_total_power
+}
+ECG_DERIVED = {'Heart Rate': ECGChannel.get_heart_rate}
 NOT_CONFIGURABLE = [
     'Hjorth Parameters',
     'Permutation Entropy',
@@ -41,14 +48,16 @@ NOT_CONFIGURABLE = [
     'Standard Deviation_',
     'Interquartile Range',
     'Kurtosis',
-    'Skewness'
+    'Skewness',
+    'Power Ratios',
+    'Absolute Power',
+    'Power Standard Deviation',
+    'Relative Powers',
+    'Total Power'
 ]
+CUSTOM_ARGSPEC = ['get_welch']
 
-WELCH_DERIVED = {
-    'Power Ratios': 'get_power_ratios',
-    'Absolute Power': 'get_absolute_power'
-}
-ECG_DERIVED = {'Heart Rate': ECGChannel.get_heart_rate}
+
 
 DERIVANDS = {
     'Pressure': {**BASIC}, 'ODBA': {**BASIC}, 'Gyroscope': {**BASIC}, 'Other': {**BASIC},
@@ -58,7 +67,7 @@ DERIVANDS = {
     'Heart Rate': HEARTRATE_DERIVED,
     "Welch's Power Spectral Density": WELCH_DERIVED 
 }
-LABEL_TO_METHOD = {**BASIC, **EXG_DERIVED, **ECG_DERIVED, **EPOCH_DERIVED}
+LABEL_TO_METHOD = {**BASIC, **EXG_DERIVED, **ECG_DERIVED, **EPOCH_DERIVED, **WELCH_DERIVED}
 
 FEATURE_OPTIONS = {
     'all': {**BASIC, **EXG_DERIVED, **ECG_DERIVED, **EPOCH_DERIVED},
