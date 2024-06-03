@@ -1,4 +1,5 @@
 import streamlit as st
+import modules.instructions as instruct
 from modules.ConfigureSession import SessionConfig
 from utils.EDF.EDF import EDFutils, Channel
 from utils.EDF.Epoch import Epoch
@@ -29,7 +30,8 @@ class BuildFeatures(SessionConfig):
             else: 
                 derivand_name = None
             self.feature_store[cmd['alias']] = self.execute_command(ch, cmd, derivand_name)
-            st.write(cmd['alias'])
+        loading_bar.empty()
+        st.success("Feature calculation successful!")
             
     def execute_command(self, root_obj, command, derivand_name=None) -> dict:
         if not command['is_derived']:
@@ -91,3 +93,16 @@ class BuildFeatures(SessionConfig):
                         )
                         commands += dcommands
         return commands
+    
+    def configure_output_freq(self) -> None:
+        self.output_freq = st.number_input(
+            "Output frequency (Hz)",
+            min_value=1,
+            help=instruct.FEATURE_FREQUENCY_HELP
+        )
+    
+    def visualize_feature(self):
+        st.selectbox(
+            "Select a computed feature",
+            options=self.feature_store
+        )

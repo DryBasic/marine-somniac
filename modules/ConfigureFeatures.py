@@ -26,13 +26,6 @@ class ConfigureFeatures(SessionConfig):
         # bad design, forces all method names to be unique...
         self.name_to_method = {m.__name__: m for m in FEATURE_OPTIONS['all'].values()}
 
-    def configure_output_freq(self) -> None:
-        self.output_freq = st.number_input(
-            "Output frequency (Hz)",
-            min_value=1,
-            help=instruct.FEATURE_FREQUENCY_HELP
-        )
-
     # TODO
     def get_widget_defaults(self, preload_type):
         match preload_type:

@@ -26,8 +26,6 @@ if not validity[0]:
     st.error(validity[1])
 else:
     page = ConfigureFeatures(session.analysis)
-    page.configure_output_freq()
-
     starting_point = st.radio(
         "Choose a starting point",
         options=["Saved configuration", "From scratch", "All possible", 'Base Model', 'Extended Model', 'Refined Model'],
@@ -48,20 +46,20 @@ else:
         if st.button("Save Configuration", disabled=not valid[0], use_container_width=True):
             page.save_configuration()
 
-    with view_config:
-        if st.button("View current configuration", use_container_width=True):
-            show_config(page.feature_config)
-
     with build:
         bld = BuildFeatures(
             analysis=page.analysis,
             build_config=page.retrieve_configuration()
         )
-        st.write(bld.flatten_configuration())
+        with view_config:
+            if st.button("View Saved Configuration", use_container_width=True):
+                show_config(bld.flatten_configuration())
 
-        if st.button("build"):
+        if st.button("Start Feature Calculations", use_container_width=True):
             bld.compile_commands()
             bld.execute_all_commands()
 
+        if bld.feature_store:
+            bld.visualize_feature()
 
 
