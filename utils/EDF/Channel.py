@@ -3,9 +3,10 @@ import pandas as pd
 import inspect
 from typing import Self
 from datetime import timedelta
+from .Base import Base
 
 
-class Channel:
+class Channel(Base):
     def __init__(self, start_ts, end_ts, name: str, signal: np.array, time:np.array=None, freq=None, type_=None) -> None:
         self.name = name
         self.time = time
@@ -79,7 +80,7 @@ class Channel:
         slice_signal = self.signal[start_idx:end_idx]
         slice_time = self.time[start_idx:end_idx]
 
-        return Channel(
+        return self.__class__(
             name=self.name,
             signal=slice_signal,
             time=slice_time,
@@ -102,8 +103,8 @@ class Channel:
         # traced back before this function call
         new_name = f'{self.name}.{inspect.stack()[1][3]}'
         new_time = self.time[::self.freq//step_size]
-        new_freq = 1/step_size
-        return Channel(
+        new_freq = step_size/1
+        return self.__class__(
             start_ts=self.start_ts,
             end_ts=self.end_ts,
             name=new_name,
@@ -173,10 +174,6 @@ class Channel:
             data=np.array([self.time, self.signal]).T,
             columns=['time', self.name]
         )
-    
-    def run_method(self, method_name, args: dict):
-        func = getattr(self, method_name) 
-        func(**args)
 
     def visualize(self):
         """

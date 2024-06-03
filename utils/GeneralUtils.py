@@ -26,4 +26,4 @@ class GeneralUtils:
                     collection.append(GeneralUtils.convert_type(
                         subtypes[i], v
                     ))
-                return typing.get_origin(supertype)([collection])
+                return typing.get_origin(supertype)(collection)

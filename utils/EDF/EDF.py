@@ -1,4 +1,3 @@
-import inspect
 from datetime import timedelta, datetime
 from typing import Self
 import pandas as pd

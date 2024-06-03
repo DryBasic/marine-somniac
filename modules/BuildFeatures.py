@@ -1,20 +1,55 @@
-from utils.SessionBase import SessionBase
-from utils.EDF.EDF import EDFutils
+import streamlit as st
+from modules.ConfigureSession import SessionConfig
+from utils.EDF.EDF import EDFutils, Channel
+from utils.EDF.Epoch import Epoch
+from utils.EDF.SpectralDensity import SpectralDensity
 
 
-class BuildFeatures(SessionBase):
-    def __init__(self, build_config: dict) -> None:
+class BuildFeatures(SessionConfig):
+    def __init__(self, analysis, build_config: dict) -> None:
+        self.analysis = analysis
         self.build_config = build_config
+        self.feature_store = {}
+        self.derivand_store = {}
 
-    def execute_commands(self):
+    def execute_all_commands(self):
         edf = EDFutils(
             self.get_edf_from_analysis(),
             fetch_metadata=False,
             config=self.get_edfconfig() 
         )
-        for cmd in self.commands:
+        loading_bar = st.progress(0, "Calcuting features, please wait...")
+        for i, cmd in enumerate(self.commands):
+            loading_bar.progress(i/len(self.commands), 
+                f"Calculating {cmd['alias']} (feature {i+1} of {len(self.commands)}), please wait...")
             ch = edf[cmd['channel']]
-            ch.run_method(cmd['method'], ch['args'])
+            if cmd['is_derived']:
+                len_self = len(cmd['alias'].split('.')[-1])+1
+                derivand_name = cmd['alias'][:-len_self]
+            else: 
+                derivand_name = None
+            self.feature_store[cmd['alias']] = self.execute_command(ch, cmd, derivand_name)
+            st.write(cmd['alias'])
+            
+    def execute_command(self, root_obj, command, derivand_name=None) -> dict:
+        if not command['is_derived']:
+            feature = root_obj.run_method(command['method'], command['args'])
+        else:
+            args = {} if command['args'] == [] else command['args']
+            derivand = self.derivand_store[derivand_name]
+            feature = derivand.run_method(command['method'], args)
+
+        if not isinstance(feature, dict):
+            self.derivand_store[command['alias']] = feature
+            if issubclass(feature.__class__, Channel):
+                feature = feature.signal
+            elif isinstance(feature, Epoch):
+                feature = feature.times
+            elif isinstance(feature, SpectralDensity):
+                feature = feature.welches
+            else:
+                raise TypeError(f"Feature, {command['alias']}, of type: {type(feature)} not expected.")
+        return feature
 
     def compile_commands(self) -> None:
         self.commands = self.flatten_configuration()
@@ -33,7 +68,7 @@ class BuildFeatures(SessionBase):
             if not instances:
                 # Non-configurable methods (no args)
                 commands.append({
-                    'alias': (f"{name}[0]", 0),
+                    'alias': f"{name}[0]",
                     'channel': channel,
                     'method': method,
                     'args': {},
@@ -43,7 +78,7 @@ class BuildFeatures(SessionBase):
                 # Configurable methods (have args)
                 for i, instance in enumerate(instances):
                     commands.append({
-                        'alias': (f"{name}[{i}]", i),
+                        'alias': f"{name}[{i}]",
                         'channel': channel,
                         'method': method,
                         'args': instance['args'],

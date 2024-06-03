@@ -37,7 +37,7 @@ else:
     conf, build = st.tabs(['Configure', 'Build & Explore Features'])
 
     with conf:
-        page.specify_methods_per_channel(starting_point)
+        page.specify_methods_per_channel()
 
         valid = page.validate_all_configurations()
         if not valid[0]:
@@ -53,8 +53,15 @@ else:
             show_config(page.feature_config)
 
     with build:
-        bld = BuildFeatures(build_config=page.retrieve_configuration())
+        bld = BuildFeatures(
+            analysis=page.analysis,
+            build_config=page.retrieve_configuration()
+        )
         st.write(bld.flatten_configuration())
+
+        if st.button("build"):
+            bld.compile_commands()
+            bld.execute_all_commands()
 
 
 

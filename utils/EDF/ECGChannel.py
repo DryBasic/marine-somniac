@@ -1,18 +1,18 @@
 from .EXGChannel import EXGChannel
+from .Epoch import Epoch
 from typing import Self
 import pandas as pd
 import numpy as np
 import wfdb.processing
 from sleepecg import detect_heartbeats
-from .constants import HR_BANDS
 
 
 class ECGChannel(EXGChannel):
     def get_heart_rate(self, search_radius:int=200, filter_threshold:int=200) -> Self:
         """
-        Gets heart rate at 1 Hz and extrapolates it to the same frequency as input data
         search_radius: search radius to look for peaks (200 ~= 150 bpm upper bound)
         filter_threshold: threshold above which to throw out values (filter_threshold=200 would throw out any value above 200 bpm and impute it from its neighbors)
+        step_size: adas
         """
         rpeaks = detect_heartbeats(self.signal, self.freq)  # using sleepecg
         rpeaks_corrected = wfdb.processing.correct_peaks(
@@ -31,15 +31,15 @@ class ECGChannel(EXGChannel):
         hr_data[hr_data > filter_threshold] = np.nan
         hr_data = hr_data.interpolate(method='quadratic', order=5).fillna('ffill').fillna('bfill')
         hr_data = hr_data.to_numpy()
-        return self._return(hr_data, step_size=1)
-
-    # override default bands
-    def get_welch(self, epochs=None, window_sec:int=4, bands:list[tuple[float, float, str]]=HR_BANDS) -> tuple[dict, np.array, np.array]:
+        return self._return(hr_data, step_size=self.freq)
+    
+    def get_hr_epoch(self, freq_broad:tuple[float,float]=(0, 1), window_sec:int=512, step_size:int=32) -> tuple:
         """
-        window_sec: size of the rolling window to use in seconds
-        bands: band ranges and their name from which to calculate the spectral density
+        freq_broad: broad range frequency of EEG (this is used for "absolute power" calculations, and as a divisor for calculating overall relative power)
+        window_sec: size of the epoch rolling window to use in seconds
+        step_size: how big of a step size to use, in seconds
         """
-        return EXGChannel.get_welch(epochs, window_sec, bands)
+        return Epoch(self, freq_broad, window_sec, step_size)
 
     def get_hr_epoch_bundle(self, heart_rate_data, freq_broad=(0,1), sfreq=500, epoch_window_sec=512, welch_window_sec=512, step_size=32) -> pd.DataFrame:
         """
@@ -57,7 +57,7 @@ class ECGChannel(EXGChannel):
         welches, freqs, power_spectral_density = self.get_welch_of_bands(epochs, welch_window_sec)
 
         low_high = {'lf/hf': welches['lf']/welches['hf']}
-        total_power = {'total_power': self.get_total_power(welches.values())}
+        total_power = self.get_total_power(welches)
         percent_powers = {f"{k}_percent": 100*array/total_power['total_power'] for k, array in welches}
 
         nu_factor = 100 / (feat['lf'] + feat['hf'])

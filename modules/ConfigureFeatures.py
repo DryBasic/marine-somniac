@@ -4,6 +4,7 @@ from typing import Callable, get_origin, get_args
 import inspect
 import modules.instructions as instruct
 from utils.EDF.EDF import EDFutils
+from utils.EDF.constants import HR_BANDS
 from modules.ConfigureSession import SessionConfig
 from config.channelcompute import *
 
@@ -22,6 +23,8 @@ class ConfigureFeatures(SessionConfig):
         self.config_name = "MakeFeatures.json"
         self.feature_data_name = "features.csv"
         self.containers = {}
+        # bad design, forces all method names to be unique...
+        self.name_to_method = {m.__name__: m for m in FEATURE_OPTIONS['all'].values()}
 
     def configure_output_freq(self) -> None:
         self.output_freq = st.number_input(
@@ -38,7 +41,7 @@ class ConfigureFeatures(SessionConfig):
                 pass
         return 
 
-    def specify_methods_per_channel(self, preload) -> None:
+    def specify_methods_per_channel(self) -> None:
         """
         Create expanders for each specified channel and let user specify which
         features should be computed from it. Modifies self.feature_config to contain
@@ -140,8 +143,8 @@ class ConfigureFeatures(SessionConfig):
         descriptions by reading the method argspec and docstring.
         """
         method_name = method.__name__
-        arg_info = self.get_method_args(ch_name, method_name, forspec=True)  
-
+        arg_info = self.get_method_args(method, forspec=True)  
+    
         arg_vals = {}
         unpacked_args = {}
         if not method_name in CUSTOM_ARGSPEC:
@@ -169,7 +172,7 @@ class ConfigureFeatures(SessionConfig):
                 **arg_vals
             }
         else:
-            if method_name == 'get_welch':
+            if method_name in ('get_welch', 'get_hr_welch'):
                 wkey = key_str+ch_name+method_name
                 arg_vals = self.specify_welch_args(container, arg_info, wkey)
             else:
@@ -219,14 +222,14 @@ class ConfigureFeatures(SessionConfig):
             return (False, "No features specified. Either remove this channel from the main "
                     "configuration, or specify features to compute from this channel.")
         
-        try:
-            typed_config = self.iterate_type_coercion(ch_name, channel_config)
-            self.feature_config[ch_name] = typed_config
-            self.validities[ch_name] = True
-            return (True, "Configuration valid")
-        except Exception as exc:
-            self.validities[ch_name] = False
-            return (False, str(exc))
+        # try:
+        typed_config = self.iterate_type_coercion(ch_name, channel_config)
+        self.feature_config[ch_name] = typed_config
+        self.validities[ch_name] = True
+        return (True, "Configuration valid")
+        # except Exception as exc:
+        #     self.validities[ch_name] = False
+        #     return (False, str(exc))
 
     def validate_all_configurations(self) -> tuple[bool, str]:
         if not len(self.validities) == len(self.edf.channels):
@@ -239,8 +242,10 @@ class ConfigureFeatures(SessionConfig):
     def iterate_type_coercion(self, ch_name: str, tree: dict) -> tuple|dict:
         converted = {}
         for method_name, instances in tree.items():
+            # bad design, forces all method names to be unique...
+            method = self.name_to_method[method_name]
             converted[method_name] = []
-            arg_info = self.get_method_args(ch_name, method_name)
+            arg_info = self.get_method_args(method)
             for i, instance in enumerate(instances):
                 inst_config = {'args': {}}
                 # args = None when non-configurable method like most Epoch-derived
@@ -275,10 +280,7 @@ class ConfigureFeatures(SessionConfig):
             # df.to_csv(f"{}/{self.feature_data_name}")
         st.toast("Features computed and saved to analysis.")
 
-    def get_method_args(self, ch_name, method_name, forspec=False) -> dict:
-        ch_type = self.edf.channel_types[ch_name]
-        channel_obj = self.edf._route_object[ch_type]
-        method = getattr(channel_obj, method_name)
+    def get_method_args(self, method: Callable, forspec=False) -> dict:
         argspec = inspect.getfullargspec(method)
 
         args = [arg for arg in argspec.args if arg != 'self']
