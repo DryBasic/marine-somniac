@@ -12,7 +12,7 @@ session = SessionConfig()
 st.warning("Please note that EDF files cannot be redownloaded.")
 if session.analysis:
     for file in session.get_analysis_files():
-        if file.split(".")[-1].lower() != 'edf':
+        if file.split(".")[-1].lower() in ('json', 'csv'):
             fpath = session.get_file_from_analysis(file)
             with open(fpath) as f:
                 f_bytes = f.read()

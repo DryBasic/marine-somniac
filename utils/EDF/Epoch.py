@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import antropy
 import mne
 import yasa
@@ -31,6 +32,14 @@ class Epoch(Base):
         # add window/2 to the times to make the epochs "centered" around the times
         times = times + self.window_sec // 2 
         return (times, epochs)
+    
+    def make_dataframe(self, feature: dict) -> pd.DataFrame:
+        return pd.DataFrame.from_dict(
+            {
+                'epoch': self.times,
+                **feature
+            }
+        )
 
     def get_hjorth_params(self) -> dict:
         mobility, complexity = antropy.hjorth_params(self.epochs, axis=1)

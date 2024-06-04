@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import yasa
 from scipy.signal import welch
 from scipy.integrate import simpson
@@ -32,6 +33,14 @@ class SpectralDensity(Base):
         for i, (_, _, band_name) in enumerate(self.bands):
             welches[band_name] = bandpower[i]
         return (welches, freqs, power_spectral_density)
+    
+    def make_dataframe(self, feature: dict) -> pd.DataFrame:
+        return pd.DataFrame.from_dict(
+            {
+                'epoch': self.from_epoch.times,
+                **feature
+            }
+        )
 
     def get_power_ratios(self) -> dict:
         power_ratios = {}

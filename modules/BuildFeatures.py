@@ -1,4 +1,6 @@
 import streamlit as st
+import os
+import pandas as pd
 import modules.instructions as instruct
 from modules.ConfigureSession import SessionConfig
 from utils.EDF.EDF import EDFutils, Channel
@@ -29,7 +31,9 @@ class BuildFeatures(SessionConfig):
                 derivand_name = cmd['alias'][:-len_self]
             else: 
                 derivand_name = None
-            self.feature_store[cmd['alias']] = self.execute_command(ch, cmd, derivand_name)
+            feature = self.execute_command(ch, cmd, derivand_name)
+            self.save_feature(feature, specs=cmd)
+            self.feature_store[cmd['alias']] = feature
         loading_bar.empty()
         st.success("Feature calculation successful!")
             
@@ -44,14 +48,22 @@ class BuildFeatures(SessionConfig):
         if not isinstance(feature, dict):
             self.derivand_store[command['alias']] = feature
             if issubclass(feature.__class__, Channel):
-                feature = feature.signal
+                feature = feature.to_DataFrame()
             elif isinstance(feature, Epoch):
-                feature = feature.times
+                feature = pd.DataFrame.from_dict({'epoch': feature.times})
             elif isinstance(feature, SpectralDensity):
-                feature = feature.welches
+                feature = feature.make_dataframe(feature.welches)
             else:
                 raise TypeError(f"Feature, {command['alias']}, of type: {type(feature)} not expected.")
+        else:
+            feature = derivand.make_dataframe(feature)
         return feature
+    
+    def save_feature(self, feature_df: pd.DataFrame, specs: dict) -> None:
+        parent = self.get_analysis_path(self.analysis)
+        if 'feature_store' not in os.listdir(parent):
+            os.mkdir(f"{parent}/feature_store")
+        feature_df.to_csv(f"{parent}/feature_store/{specs['alias']}.csv", index=False)
 
     def compile_commands(self) -> None:
         self.commands = self.flatten_configuration()
