@@ -6,14 +6,15 @@ from modules.ConfigureSession import SessionConfig
 from utils.EDF.EDF import EDFutils, Channel
 from utils.EDF.Epoch import Epoch
 from utils.EDF.SpectralDensity import SpectralDensity
+from utils.PlottingUtils import PlottingUtils
 
 
-class BuildFeatures(SessionConfig):
+class BuildFeatures(SessionConfig, PlottingUtils):
     def __init__(self, analysis, build_config: dict) -> None:
         self.analysis = analysis
         self.build_config = build_config
-        self.feature_store = {}
         self.derivand_store = {}
+        self.feature_store_name = 'feature_store'
 
     def execute_all_commands(self):
         edf = EDFutils(
@@ -33,7 +34,6 @@ class BuildFeatures(SessionConfig):
                 derivand_name = None
             feature = self.execute_command(ch, cmd, derivand_name)
             self.save_feature(feature, specs=cmd)
-            self.feature_store[cmd['alias']] = feature
         loading_bar.empty()
         st.success("Feature calculation successful!")
             
@@ -60,10 +60,10 @@ class BuildFeatures(SessionConfig):
         return feature
     
     def save_feature(self, feature_df: pd.DataFrame, specs: dict) -> None:
-        parent = self.get_analysis_path(self.analysis)
-        if 'feature_store' not in os.listdir(parent):
-            os.mkdir(f"{parent}/feature_store")
-        feature_df.to_csv(f"{parent}/feature_store/{specs['alias']}.csv", index=False)
+        parent = self.get_analysis_path()
+        if self.feature_store_name not in os.listdir(parent):
+            os.mkdir(f"{parent}/{self.feature_store_name}")
+        feature_df.to_csv(f"{parent}/{self.feature_store_name}/{specs['alias']}.csv", index=False)
 
     def compile_commands(self) -> None:
         self.commands = self.flatten_configuration()
@@ -114,7 +114,24 @@ class BuildFeatures(SessionConfig):
         )
     
     def visualize_feature(self):
-        st.selectbox(
-            "Select a computed feature",
-            options=self.feature_store
+        opts = ['.'.join(i.split('.')[:-1]) 
+                for i in os.listdir(self.get_file_from_analysis(
+                    self.feature_store_name
+                ))]
+        pick = st.selectbox(
+            "Select computed features",
+            options=['']+opts
         )
+        if pick:
+            parent = f"{self.get_analysis_path()}/{self.feature_store_name}"
+            df = pd.read_csv(f"{parent}/{pick}.csv")
+            if len(df) > 10_000:
+                og_len = len(df)
+                step = len(df)//10_000
+                df = df.iloc[::step]
+                st.write(f"Data is too large to plot ({og_len} points). "
+                         f"Downsampling to {len(df)} points")
+            plt = st.radio('', ['line', 'scatter'], horizontal=True)
+            st.plotly_chart(self.plot_feature(df, plot=plt), use_container_width=True)
+
+3_600_001

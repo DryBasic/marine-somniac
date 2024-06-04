@@ -6,6 +6,7 @@ from utils.StringUtils import StringUtils
 from utils.GeneralUtils import GeneralUtils
 from config.meta import ANALYSIS_STORE
 
+
 class SessionBase(StringUtils, GeneralUtils):
     @staticmethod
     def initialize_session() -> None:

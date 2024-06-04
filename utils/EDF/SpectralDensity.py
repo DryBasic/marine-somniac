@@ -37,7 +37,7 @@ class SpectralDensity(Base):
     def make_dataframe(self, feature: dict) -> pd.DataFrame:
         return pd.DataFrame.from_dict(
             {
-                'epoch': self.from_epoch.times,
+                'time': self.from_epoch.times,
                 **feature
             }
         )

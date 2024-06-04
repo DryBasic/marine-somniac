@@ -59,7 +59,7 @@ else:
             bld.compile_commands()
             bld.execute_all_commands()
 
-        if bld.feature_store:
-            bld.visualize_feature()
+        # TODO check if feature store exists
+        bld.visualize_feature()
 
 

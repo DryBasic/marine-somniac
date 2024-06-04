@@ -36,7 +36,7 @@ class Epoch(Base):
     def make_dataframe(self, feature: dict) -> pd.DataFrame:
         return pd.DataFrame.from_dict(
             {
-                'epoch': self.times,
+                'time': self.times,
                 **feature
             }
         )

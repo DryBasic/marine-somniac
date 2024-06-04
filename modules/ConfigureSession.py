@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit_theme import st_theme
 import modules.instructions as instruct
 from utils.SessionBase import SessionBase
-from config.meta import GET_STARTED
+from config.meta import GET_STARTED, ANALYSIS_STORE
 
 
 class SessionConfig(SessionBase):
@@ -29,6 +29,9 @@ class SessionConfig(SessionBase):
     
     def get_file_from_analysis(self, file) -> str:
         return SessionBase.get_file_from_analysis(self.analysis, file)
+
+    def get_analysis_path(self) -> str:
+        return f"{ANALYSIS_STORE}/{self.analysis}"
     
     def validate_analysis(self, modes: list) -> tuple[bool, str]:
         if 'edfconfig' in modes:
