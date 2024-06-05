@@ -23,9 +23,6 @@ class SessionConfig(SessionBase):
     def get_edfconfig(self) -> dict:
         path = self.get_file_from_analysis('EDFconfig.json')
         return self.read_json(path)
-
-    def get_edf_from_analysis(self) -> str:
-        return SessionBase.get_edf_from_analysis(self.analysis, path=True)
     
     def get_file_from_analysis(self, file) -> str:
         return SessionBase.get_file_from_analysis(self.analysis, file)
@@ -49,11 +46,14 @@ class SessionConfig(SessionBase):
 
     @staticmethod
     def insert_logo(sidebar=True) -> None:
-        theme = st_theme()['base']
-        if sidebar:
-            st.sidebar.image(f'assets/sidebar_logo_{theme}.jpeg')
-        else:
-            st.image(f'assets/logo_{theme}.jpeg')
+        try:
+            theme = st_theme()['base']
+            if sidebar:
+                st.sidebar.image(f'assets/sidebar_logo_{theme}.jpeg')
+            else:
+                st.image(f'assets/logo_{theme}.jpeg')
+        except:
+            pass
 
     # TODO
     def check_model_eligibility():

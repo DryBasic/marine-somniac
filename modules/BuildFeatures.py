@@ -25,7 +25,8 @@ class BuildFeatures(SessionConfig, PlottingUtils):
         loading_bar = st.progress(0, "Calcuting features, please wait...")
         for i, cmd in enumerate(self.commands):
             loading_bar.progress(i/len(self.commands), 
-                f"Calculating {cmd['alias']} (feature {i+1} of {len(self.commands)}), please wait...")
+                f"Calculating {cmd['alias']} (feature {i+1} of "
+                f"{len(self.commands)}), please wait...")
             ch = edf[cmd['channel']]
             if cmd['is_derived']:
                 len_self = len(cmd['alias'].split('.')[-1])+1
@@ -54,7 +55,8 @@ class BuildFeatures(SessionConfig, PlottingUtils):
             elif isinstance(feature, SpectralDensity):
                 feature = feature.make_dataframe(feature.welches)
             else:
-                raise TypeError(f"Feature, {command['alias']}, of type: {type(feature)} not expected.")
+                raise TypeError(f"Feature, {command['alias']}, of type: "
+                                f"{type(feature)} not expected.")
         else:
             feature = derivand.make_dataframe(feature)
         return feature
@@ -133,5 +135,3 @@ class BuildFeatures(SessionConfig, PlottingUtils):
                          f"Downsampling to {len(df)} points")
             plt = st.radio('', ['line', 'scatter'], horizontal=True)
             st.plotly_chart(self.plot_feature(df, plot=plt), use_container_width=True)
-
-3_600_001

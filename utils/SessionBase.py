@@ -69,6 +69,21 @@ class SessionBase(StringUtils, GeneralUtils):
         return None
 
     @staticmethod
+    def get_label_from_analysis(analysis: str, path=False) -> str | None:
+        """
+        Search for and retrieve filepath of the label file for a given analysis.
+        """
+        if analysis in SessionBase.get_existing_analyses():
+            for file in os.listdir(f'{ANALYSIS_STORE}/{analysis}'):
+                if file != 'labels.csv':
+                    ext = file.split('.')[-1].lower()
+                    if ext == 'csv' and not path:
+                        return file
+                    elif ext == 'csv' and path:
+                        return f"{ANALYSIS_STORE}/{analysis}/{file}"
+        return None
+
+    @staticmethod
     def write_edf(file: UploadedFile, parent_dir) -> None:
         """
         Take the EDF file in the form streamlit's UploadedFile object (return type of

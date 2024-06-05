@@ -8,6 +8,7 @@ import streamlit as st
 import modules.instructions as instruct
 from modules.ConfigureSession import SessionConfig
 from modules.ConfigureEDF import ConfigureEDF
+from modules.ConfigureLabel import ConfigureLabel
 from config.meta import APP_NAME
 
 st.set_page_config(
@@ -33,9 +34,6 @@ if mode == 'Start New Analysis':
         max_chars=60,
         help=instruct.ANALYSIS_NAME
     )
-    # analysis_description = st.text_area(
-    #     'Give an optional description of your analysis'
-    # )
     session_validity = session.validate_analysis_name(analysis_name)
     st.subheader("Upload a file to save your analysis")
     st.write('After uploading your file, switch to the "Edit Existing" workflow')
@@ -51,10 +49,6 @@ elif mode == 'Edit Existing':
             'Pick analysis',
             options=['']+existing
         )
-        # analysis_description = st.text_area(
-        #     'Give an optional description of your analysis',
-        #     # options = get_description(analysis_name)
-        # )
     session_validity = (analysis_name != '', "Select a analysis")
     st.subheader("Add and configure your EDF and labels")
 
@@ -84,9 +78,27 @@ else:
             else:
                 st.success(edf_valid[1])
             
-            if st.button("Save Configuration", disabled=not edf_valid[0]):
+            if st.button("Save Configuration", disabled=not edf_valid[0], use_container_width=True):
                 edfWidgets.save_configuration()
 
-        with label_pane:
-            pass
+    with label_pane:
+        lblWidgets = ConfigureLabel(analysis_name)
+        with st.expander("Upload/Overwrite File", True):
+            lblWidgets.upload_file()
+    
+        if not ConfigureLabel.get_label_from_analysis(analysis_name):
+            st.error("No label file associated with this analysis. Please upload one.")
+
+        elif mode == 'Edit Existing':
+            with st.expander("Map Columns", True):
+                lblWidgets.column_mapping()
+
+            label_valid = lblWidgets.validate_configuration()
+            if not label_valid[0]:
+                st.error(label_valid[1])
+            else:
+                st.success(label_valid[1])
+            
+            if st.button("Save Configuration", disabled=not label_valid[0], key='L', use_container_width=True):
+                lblWidgets.save_configuration()
         

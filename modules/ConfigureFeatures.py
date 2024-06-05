@@ -14,7 +14,7 @@ class ConfigureFeatures(SessionConfig):
         self.analysis = analysis
         self.output_freq = None
         self.edf = EDFutils(
-            self.get_edf_from_analysis(),
+            self.get_edf_from_analysis(self.analysis),
             fetch_metadata=False,
             config=self.get_edfconfig() 
         )

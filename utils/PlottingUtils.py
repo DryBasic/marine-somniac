@@ -30,3 +30,4 @@ class PlottingUtils:
                 )
         fig.update_layout(margin={'t':0})
         return fig
+    
