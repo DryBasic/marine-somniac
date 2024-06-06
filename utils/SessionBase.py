@@ -1,5 +1,6 @@
 import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
+import pandas as pd
 import os
 import json
 from utils.StringUtils import StringUtils
@@ -14,6 +15,7 @@ class SessionBase(StringUtils, GeneralUtils):
         Initializes session_state variables. Creates analysis store directory.
         """
         SESSION_VARS = (
+            'picked_analysis',
         )
         for session_var in SESSION_VARS:
             if session_var not in st.session_state:
@@ -53,6 +55,16 @@ class SessionBase(StringUtils, GeneralUtils):
         if file in os.listdir(parent_path):
             return f"{parent_path}/{file}"
         return None
+    
+    @staticmethod
+    def get_labels(analysis) -> pd.DataFrame:
+        path = SessionBase.get_file_from_analysis(analysis, 'labels.csv')
+        return pd.read_csv(path)
+    
+    @staticmethod
+    def get_edfconfig(analysis) -> dict:
+        path = SessionBase.get_file_from_analysis(analysis, 'EDFconfig.json')
+        return SessionBase.read_json(path)
     
     @staticmethod
     def get_edf_from_analysis(analysis: str, path=False) -> str | None:

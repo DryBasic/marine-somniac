@@ -1,3 +1,20 @@
+# TODO - global
+# Create and Edit
+    # - Add visuals for time alignment + validation
+    # - Refactor code in ConfigureLabel and ConfigureEDF (highly similar, redundancy)
+# ConfigureLabel - exception handling and better validation
+# ConfigureFeatures 
+    # - preload with saved config
+    # - preset options
+    # - exception handling when empty config
+# BuildFeatures 
+    # - don't recompute features if config is the same
+    # - join all features together for a final training set
+    # - plot code is a mess
+
+# Train Model - IMPLEMENT
+# Evaluate Model - IMPLEMENT
+# Download data - support for non-json files
 import streamlit as st
 from modules.ConfigureSession import SessionConfig
 import modules.instructions as instruct

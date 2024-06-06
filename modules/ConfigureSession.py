@@ -7,23 +7,32 @@ from config.meta import GET_STARTED, ANALYSIS_STORE
 
 class SessionConfig(SessionBase):
     def __init__(self, sidebar_widget=True) -> None:
-        # self.initialize_session()
+        self.initialize_session()
         if sidebar_widget:
             with st.sidebar:
+                opts = ['']+self.get_existing_analyses()
+                default = st.session_state['picked_analysis']
+                if default is None:
+                    default = 0
                 self.analysis = st.selectbox(
                     "Pick your analysis",
-                    options=['']+self.get_existing_analyses(),
+                    options=opts,
+                    index=default,
                     help=instruct.PICK_ANALYSIS_HELP
                 )
+                analysis_index = opts.index(self.analysis)
+                st.session_state['picked_analysis'] = analysis_index
             self.insert_logo()
 
     def get_analysis_files(self) -> str:
         return SessionBase.get_analysis_files(self.analysis)
 
     def get_edfconfig(self) -> dict:
-        path = self.get_file_from_analysis('EDFconfig.json')
-        return self.read_json(path)
+        return SessionBase.get_edfconfig(self.analysis)
     
+    def get_labels(self):
+        return SessionBase.get_labels(self.analysis)
+
     def get_file_from_analysis(self, file) -> str:
         return SessionBase.get_file_from_analysis(self.analysis, file)
 
@@ -58,3 +67,7 @@ class SessionConfig(SessionBase):
     # TODO
     def check_model_eligibility():
         pass
+
+    @staticmethod
+    def construction_message():
+        st.title("🔨Under Construction🔨")

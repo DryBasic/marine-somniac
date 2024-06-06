@@ -256,7 +256,8 @@ class ConfigureFeatures(SessionConfig):
     # TODO
     def retrieve_configuration(self) -> dict:
         cfg_path = self.get_file_from_analysis(self.config_name)
-        return self.read_json(cfg_path)
+        if cfg_path is not None:
+            return self.read_json(cfg_path)
 
     def save_configuration(self) -> None:
         self.write_configuration(

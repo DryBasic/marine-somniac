@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import pandas as pd
+import numpy as np
 import modules.instructions as instruct
 from modules.ConfigureSession import SessionConfig
 from utils.EDF.EDF import EDFutils, Channel
@@ -18,7 +19,7 @@ class BuildFeatures(SessionConfig, PlottingUtils):
 
     def execute_all_commands(self):
         edf = EDFutils(
-            self.get_edf_from_analysis(),
+            self.get_edf_from_analysis(self.analysis, path=True),
             fetch_metadata=False,
             config=self.get_edfconfig() 
         )
@@ -114,24 +115,78 @@ class BuildFeatures(SessionConfig, PlottingUtils):
             min_value=1,
             help=instruct.FEATURE_FREQUENCY_HELP
         )
+
+    def filter_labels(self) -> pd.DataFrame:
+        edfcfg = self.get_edfconfig()
+        start = edfcfg['time']['start'] 
+        end = edfcfg['time']['end'] 
+
+        label_df = self.get_labels()\
+            .astype({'datetime':'datetime64[ns]'})\
+            .query(f"datetime > '{start}' and datetime < '{end}'")\
+            .reset_index(drop=True)\
+            .reset_index()\
+            .rename(columns={'index':'second'})
+        return label_df
     
-    def visualize_feature(self):
-        opts = ['.'.join(i.split('.')[:-1]) 
-                for i in os.listdir(self.get_file_from_analysis(
-                    self.feature_store_name
-                ))]
-        pick = st.selectbox(
-            "Select computed features",
-            options=['']+opts
-        )
-        if pick:
-            parent = f"{self.get_analysis_path()}/{self.feature_store_name}"
-            df = pd.read_csv(f"{parent}/{pick}.csv")
-            if len(df) > 10_000:
-                og_len = len(df)
-                step = len(df)//10_000
-                df = df.iloc[::step]
-                st.write(f"Data is too large to plot ({og_len} points). "
-                         f"Downsampling to {len(df)} points")
-            plt = st.radio('', ['line', 'scatter'], horizontal=True)
-            st.plotly_chart(self.plot_feature(df, plot=plt), use_container_width=True)
+    @staticmethod
+    def hex_to_rgb(hexcode:str):
+        hexcode = hexcode.strip('#')
+        return tuple(int(hexcode[i:i+2], 16) for i in (0, 2, 4))
+    
+    def build_colorpickers(self):
+        # move to config
+        colorway = [
+            ('orange', '#d55e00', (213,94,0)),
+            ('pink', '#cc79a7',  (204,121,167)),
+            ('blue', '#0072b2', (0,114,178)),
+            ('yellow', '#f0e442', (240,228,66)),
+            ('green', '#009e73', (0,158,115)),
+            ('light blue', '#74E0EA', None)
+        ]
+        labels = self.filter_labels()
+        cmap = {}
+        unique_lbls = pd.unique(labels.label)
+        c = st.columns(len(unique_lbls))
+        for i, lbl in enumerate(unique_lbls):
+            color = colorway[i][1] if i <= len(colorway) else '#000'
+            cmap[lbl] = c[i].color_picker(lbl, value=color)
+        return cmap
+
+    def get_label_trace(self, cmap):
+        labels = self.filter_labels()
+        labels['color'] = [cmap[l] for l in labels.label]
+        lbl_plt = self.plot_label_trace(labels)
+        return lbl_plt
+
+    def visualize_features(self):
+        picker_c = st.container()
+        plot_c = st.container()
+        cpicker_c = st.container()
+
+        feature_store = self.get_file_from_analysis(self.feature_store_name)
+        features = os.listdir(feature_store)
+        if features and feature_store:
+            opts = ['.'.join(i.split('.')[:-1]) for i in features]
+            pick = picker_c.selectbox(
+                "Select computed features",
+                options=['']+opts
+            )
+            with cpicker_c:
+                cmap = self.build_colorpickers()
+            if pick:
+                parent = f"{self.get_analysis_path()}/{self.feature_store_name}"
+                df = pd.read_csv(f"{parent}/{pick}.csv")
+                if len(df) > 10_000:
+                    og_len = len(df)
+                    step = len(df)//10_000
+                    df = df.iloc[::step]
+                    picker_c.write(f"Data is too large to plot ({og_len} points). "
+                            f"Downsampling to {len(df)} points")
+            else:
+                df = None
+            fig = self.plot_feature(df, self.get_label_trace(cmap))
+            if fig:
+                plot_c.plotly_chart(fig, use_container_width=True)
+            else:
+                st.error("Invalid")

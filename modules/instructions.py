@@ -11,8 +11,11 @@ N_COMPS_HELP = "You may want to calculate multiple instances of a feature to exp
 ANALYSIS_NAME = 'This will be a directory name, special characters may be rejected'
 
 def feature_generation():
-    # Instruct which feature computations are recommended
-    st.markdown('')
+    st.markdown("""
+        By default, all recommended base feature computations are specified. Edit the chosen features or 
+        their specific settings below. You can also add multiple instances of any features so long as they 
+        have unique settings.
+    """)
 
 def model_constraints():
     st.markdown('''
@@ -58,3 +61,19 @@ def get_started():
 
 def compute_features():
     st.subheader("Computing Features")
+    st.markdown("""
+        To calculate inputs to the pre-trained models or train your own, you'll first need to compute features 
+        that capture patterns in the data that allows for the differentiation of sleep states. You'll have the 
+        option to simply choose suggested feature sets instead of specifying your own from scratch. Please note 
+        that computation can take an especially long time if you're scoring a large time range of data. It is 
+        recommended to limit your scoring to 5 hours and do it in batches, but the app will still function on 
+        larger datasets, but it will be taxing on the server.
+                
+        ***Once you've specified your features...***
+                
+        Simply navigate to the "Build & Explore Features" tab and click the "Build Features" button. Each feature 
+        will be stored as its own csv so that if issues occur during computation, progress can be resumed from the 
+        last uncomputed feature.
+                
+        You can now visually assess your features and compare them to your labels!
+    """)

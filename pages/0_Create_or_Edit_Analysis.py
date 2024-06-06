@@ -102,3 +102,14 @@ else:
             if st.button("Save Configuration", disabled=not label_valid[0], key='L', use_container_width=True):
                 lblWidgets.save_configuration()
         
+    # if edfWidgets.get_edf_from_analysis(analysis_name) and lblWidgets.get_label_from_analysis(analysis_name):
+    #     st.divider()
+    #     st.subheader("**Label & EDF Compatibility Checks**")
+    #     with st.spinner("Checking specified timestamps are compatible...")
+    #         session.analysis = analysis_name
+    #         edfconfig = session.get_edfconfig()
+    #         labels = session.get_labels()
+
+
+    #     st.success("Success!")
+
